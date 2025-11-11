@@ -1,0 +1,135 @@
+/* src/index.css (Нова версія без Tailwind) */
+
+/* CSS Reset and Body Styles */
+body, html, #root {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: sans-serif;
+    background-color: #f3f4f6; /* bg-gray-100 */
+}
+
+/* Base App Layout */
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 16px; /* p-4 */
+}
+
+.app-title {
+    text-align: center;
+    font-size: 1.875rem; /* text-3xl */
+    font-weight: bold;
+    margin-bottom: 16px; /* mb-4 */
+    color: #1f2937; /* text-gray-800 */
+}
+
+.content-area {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.panel-container {
+    width: 25%; /* w-1/4 */
+    background-color: white;
+    padding: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    margin-right: 16px;
+    overflow-y: auto;
+}
+
+.visualizer-container {
+    width: 75%; /* w-3/4 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: white;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 16px;
+}
+
+.chart-section {
+    margin-top: 24px;
+    border-top: 1px solid #e5e7eb; /* border-t */
+    padding-top: 16px;
+}
+.chart-title {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* Simulation Panel Base Styles (для кнопки) */
+.panel-button {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    margin-top: 8px;
+}
+
+/* Button variants */
+.btn-init {
+    background-color: #4f46e5; /* bg-indigo-600 */
+}
+.btn-init:hover {
+    background-color: #4338ca; /* hover:bg-indigo-700 */
+}
+
+.btn-start {
+    background-color: #10b981; /* bg-green-500 */
+}
+.btn-start:hover {
+    background-color: #059669;
+}
+
+.btn-pause {
+    background-color: #f59e0b; /* bg-yellow-500 */
+}
+.btn-pause:hover {
+    background-color: #d97706;
+}
+.btn-disabled {
+    background-color: #9ca3af; /* disabled:bg-gray-400 */
+    cursor: not-allowed;
+}
+
+/* Other panel elements */
+.panel-stat {
+    margin-top: 8px;
+    font-size: 0.875rem;
+}
+.panel-setting-group {
+    margin-top: 16px;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 16px;
+}
+.panel-setting-title {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.label-text {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 4px;
+}
+.range-input {
+    width: 100%;
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 9999px;
+    cursor: pointer;
+}
+.text-xs {
+    font-size: 0.75rem;
+    color: #6b7280;
+}
