@@ -1,7 +1,7 @@
 // src/components/GridVisualizer.tsx
 import React from 'react';
 import { useSelector } from 'react-redux';
-import type { RootState } from '../store/store'; // <-- ВИПРАВЛЕНО
+import type { RootState } from '../store/store';
 import { CellStateMap } from '../models/types'; 
 import type { GridCell } from '../models/types'; 
 
@@ -10,37 +10,16 @@ const GridVisualizer: React.FC = () => {
 
     const cellSize = 15; // Розмір клітинки в пікселях
 
-    const renderCell = (cell: GridCell) => {
-        if (cell.cell) {
-            // Клітина є
-            if (cell.cell.state === CellStateMap.DEAD) {
-                return 'bg-gray-700 opacity-50';
-            }
-            if (cell.cell.state === CellStateMap.MUTATED) {
-                return `bg-red-500 border border-red-700`;
-            }
-            // Колір здорової клітини залежить від колонії
-            return `border border-gray-900`; 
-        } else {
-            // Клітина порожня - відображаємо ресурс (наприклад, Glucose)
-            const glucoseLevel = cell.nutrient.glucose.level;
-            // Масштабування для візуального відображення рівня (від 0 до 900)
-            const intensity = Math.min(900, Math.floor(glucoseLevel * 9)); 
-            
-            // Використовуємо фіксований синій колір для фону, залежний від інтенсивності.
-            const blueValue = Math.round(255 * (intensity / 900));
-            // const hexColor = `rgb(200, 200, ${blueValue})`;
-
-            return `opacity-50`; 
-        }
-    };
-
+    // ВИДАЛЕНО: Функцію renderCell, оскільки вона більше не використовується.
+    
     return (
-        <div className="flex flex-col items-center">
-            <h3 className="text-lg font-semibold mb-2">Крок симуляції: {currentStep}</h3>
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '8px' }}>Крок симуляції: {currentStep}</h3>
             <div 
-                className="grid shadow-xl bg-gray-200"
                 style={{
+                    display: 'grid',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1)',
+                    backgroundColor: '#e5e7eb',
                     gridTemplateColumns: `repeat(${params.gridWidth}, ${cellSize}px)`,
                     gridTemplateRows: `repeat(${params.gridHeight}, ${cellSize}px)`,
                 }}
@@ -49,17 +28,28 @@ const GridVisualizer: React.FC = () => {
                     row.map((gridCell, x) => (
                         <div 
                             key={`${x}-${y}`} 
-                            className={`
-                                w-[${cellSize}px] h-[${cellSize}px]
-                            `}
                             style={{ 
+                                width: `${cellSize}px`,
+                                height: `${cellSize}px`,
+                                // Динамічне визначення кольору
                                 backgroundColor: gridCell.cell 
                                     ? gridCell.cell.color 
-                                    : `rgb(200, 200, ${Math.min(255, Math.floor(gridCell.nutrient.glucose.level * 2.5))})`,
-                                ...gridCell.cell && { 
+                                    : `rgb(200, 200, ${Math.min(255, Math.floor(gridCell.nutrient.glucose.level * 2.5))})`, 
+                                
+                                // Стилі для клітин (з бордером)
+                                ...(gridCell.cell && gridCell.cell.state !== CellStateMap.DEAD && { 
                                     borderColor: '#000', 
                                     borderWidth: '1px' 
-                                }
+                                }),
+                                
+                                // Стилі для мертвих/мутованих клітин (якщо потрібно)
+                                ...(gridCell.cell && gridCell.cell.state === CellStateMap.DEAD && {
+                                    backgroundColor: 'rgba(55, 65, 81, 0.5)', 
+                                }),
+                                ...(gridCell.cell && gridCell.cell.state === CellStateMap.MUTATED && {
+                                    borderColor: '#b91c1c', 
+                                }),
+
                             }}
                             title={`(${x}, ${y}) O2: ${gridCell.nutrient.oxygen.level.toFixed(1)}, Glu: ${gridCell.nutrient.glucose.level.toFixed(1)}`}
                         >

@@ -1,4 +1,4 @@
-// src/components/SimulationPanel.tsx (Повний вміст)
+// src/components/SimulationPanel.tsx (ПОВНА ВЕРСІЯ)
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store/store';
@@ -7,7 +7,8 @@ import { toggleRunning, setParams } from '../store/simulationSlice';
 
 const SimulationPanel: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { isRunning, currentStep, params } = useSelector((state: RootState) => state.simulation);
+    // ОНОВЛЕНО: Додаємо rootColonies для перевірки ініціалізації
+    const { isRunning, currentStep, params, rootColonies } = useSelector((state: RootState) => state.simulation);
     
     const [speed, setSpeed] = useState(params.simulationSpeedMs);
 
@@ -49,12 +50,17 @@ const SimulationPanel: React.FC = () => {
         dispatch(setParams({ simulationSpeedMs: newSpeed }));
     };
 
-    // Визначення класу кнопки Старт/Пауза
+    // ВИПРАВЛЕННЯ УМОВИ: Симуляція ініціалізована, якщо є кореневі колонії
+    const isInitialized = rootColonies.length > 0;
+    
+    // Визначення класів
     const startPauseClass = isRunning ? 'btn-pause' : 'btn-start';
-    const disabledClass = (currentStep === 0 && !isRunning) ? 'btn-disabled' : '';
+    
+    // Кнопка Старт/Пауза відключена, лише якщо симуляція ще не ініціалізована І не запущена.
+    const isDisabled = !isInitialized && !isRunning; 
 
     return (
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}> {/* p-4 space-y-4 */}
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Керування Симуляцією</h2>
             
             <button
@@ -66,8 +72,8 @@ const SimulationPanel: React.FC = () => {
 
             <button
                 onClick={handleToggle}
-                className={`panel-button ${startPauseClass} ${disabledClass}`}
-                disabled={currentStep === 0 && !isRunning}
+                className={`panel-button ${startPauseClass} ${isDisabled ? 'btn-disabled' : ''}`}
+                disabled={isDisabled}
             >
                 {isRunning ? 'Пауза' : 'Старт Симуляції'}
             </button>
@@ -79,7 +85,6 @@ const SimulationPanel: React.FC = () => {
             <div className="panel-setting-group">
                  <h3 className="panel-setting-title">Налаштування</h3>
                  
-                 {/* Повзунок швидкості */}
                  <label className="label-text">
                     Швидкість (кроків/мс): {speed}
                  </label>
@@ -92,7 +97,6 @@ const SimulationPanel: React.FC = () => {
                     className="range-input"
                  />
                  
-                 {/* Інші параметри */}
                  <p className="text-xs" style={{ marginTop: '8px' }}>Ширина: {params.gridWidth}, Висота: {params.gridHeight}</p>
                  <p className="text-xs">Поч. засновників: {params.initialCellCount}</p>
             </div>
