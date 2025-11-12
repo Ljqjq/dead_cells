@@ -1,14 +1,24 @@
 // src/services/simulationService.ts
+
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { RootState } from '../store/store'; 
-import { updateGrid, addAnalysisData, initializeSimulation, type SimulationState } from '../store/simulationSlice.ts'; 
-import { placeInitialCells, createInitialGrid, createNewCell } from '../utils/initialization';
+
+// 1. Імпорт ЗНАЧЕНЬ (редюсерів та екшенів)
+import { 
+    updateGrid, 
+    addAnalysisData, 
+    initializeSimulation, 
+    expandGrid, 
+    type SimulationState 
+} from '../store/simulationSlice.ts'; 
+
+import { placeInitialCells, createInitialGrid, createNewCell, expandGridCells } from '../utils/initialization'; 
 import { getRandomInt, checkProbability } from '../utils/random';
 
-// Імпорт ЗНАЧЕНЬ (CellStateMap)
-import { CellStateMap } from '../models/types'; 
+// Імпорт КЛАСУ Cell та КОНСТАНТИ CellStateMap
+import { CellStateMap, Cell } from '../models/types'; 
 // Імпорт ТИПІВ
-import type { GridCell, SimulationParams } from '../models/types'; 
+import type { GridCell, SerializedCell } from '../models/types'; 
 
 
 // ----------------------------------------------------------------------
@@ -21,7 +31,7 @@ export const startInitialization = createAsyncThunk(
         const state = (getState() as RootState).simulation;
         const params = state.params;
 
-        let initialGrid = createInitialGrid(params.gridWidth, params.gridHeight);
+        let initialGrid = createInitialGrid(params.gridWidth, params.gridHeight, params); 
         const { grid: finalGrid, colonies } = placeInitialCells(initialGrid, params);
 
         dispatch(initializeSimulation({ grid: finalGrid, colonies }));
@@ -43,7 +53,6 @@ export const runSimulationStep = createAsyncThunk(
         const params = state.params;
         const currentStep = state.currentStep;
 
-        // Deep copy of the grid for safe computations
         let newGrid: GridCell[][] = JSON.parse(JSON.stringify(state.grid));
         
         // 1. STAGE: GROWTH, MUTATION, AND DEATH
@@ -52,18 +61,18 @@ export const runSimulationStep = createAsyncThunk(
                 const gridCell = newGrid[y][x];
                 
                 if (gridCell.cell && gridCell.cell.state !== CellStateMap.DEAD) {
-                    const cell = gridCell.cell;
-                    const nutrient = gridCell.nutrient;
                     
-                    // --- 1.1. Mutation ---
-                    if (cell.state === CellStateMap.HEALTHY && checkProbability(cell.mutationProbability)) {
-                        cell.state = CellStateMap.MUTATED;
-                        cell.growthRate *= 1.2; 
-                    }
+                    // 1. СТВОРЕННЯ ЕКЗЕМПЛЯРА КЛАСУ (Десеріалізація)
+                    const cellInstance = new Cell(gridCell.cell as SerializedCell); 
+                    const nutrient = gridCell.nutrient;
+                    const cellData = cellInstance.dataSnapshot; 
+                    
+                    // --- 1.1. Mutation (Викликаємо метод класу ООП) ---
+                    cellInstance.attemptMutation(checkProbability);
 
                     // --- 1.2. Consumption and Viability Check ---
-                    const consumedO2 = cell.growthRate * nutrient.oxygen.consumptionRate;
-                    const consumedGlu = cell.growthRate * nutrient.glucose.consumptionRate;
+                    const consumedO2 = cellData.growthRate * nutrient.oxygen.consumptionRate;
+                    const consumedGlu = cellData.growthRate * nutrient.glucose.consumptionRate;
 
                     const hasEnoughO2 = nutrient.oxygen.level >= nutrient.oxygen.threshold;
                     const hasEnoughGlu = nutrient.glucose.level >= nutrient.glucose.threshold;
@@ -71,38 +80,39 @@ export const runSimulationStep = createAsyncThunk(
                     nutrient.oxygen.level = Math.max(0, nutrient.oxygen.level - consumedO2);
                     nutrient.glucose.level = Math.max(0, nutrient.glucose.level - consumedGlu);
                     
-                    // Death from resource starvation
-                    if (!hasEnoughO2 || !hasEnoughGlu) {
-                        cell.state = CellStateMap.DEAD;
+                    // ВИКЛИК МЕТОДУ: Перевіряємо життєздатність
+                    if (!cellInstance.checkViability(hasEnoughO2, hasEnoughGlu)) {
                         newGrid[y][x].cell = null; 
                         continue; 
                     }
                     
                     // --- 1.3. Growth / Division ---
-                    if (checkProbability(cell.growthRate)) {
+                    if (checkProbability(cellData.growthRate)) { 
                         const neighbors = getNeighbors(x, y, params.gridWidth, params.gridHeight);
                         const emptyNeighbors = neighbors.filter(pos => newGrid[pos.y][pos.x].cell === null);
                         
                         if (emptyNeighbors.length > 0) {
                             const newPos = emptyNeighbors[getRandomInt(0, emptyNeighbors.length - 1)];
-                            const isMutated = cell.state === CellStateMap.MUTATED;
                             
+                            // Створення нової клітини (серіалізованої)
                             const newCell = createNewCell(
                                 newPos.x,
                                 newPos.y,
-                                cell.rootColonyId,
-                                cell.color,
-                                isMutated
+                                cellData.rootColonyId,
+                                cellData.color,
+                                cellData.state === CellStateMap.MUTATED, 
+                                params
                             );
-                            if (isMutated) {
-                                newCell.growthRate = cell.growthRate;
-                            }
 
                             newGrid[newPos.y][newPos.x].cell = newCell;
                         }
                     }
 
-                    cell.age++;
+                    // ВИКЛИК МЕТОДУ: Старіння
+                    cellInstance.ageCell();
+                    
+                    // 2. СЕРІАЛІЗАЦІЯ: Зберігаємо оновлену клітину назад
+                    newGrid[y][x].cell = cellInstance.toSerialized(); 
                 }
             }
         }
@@ -122,9 +132,15 @@ export const runSimulationStep = createAsyncThunk(
         // 3. STAGE: CHECK FOR EXPANSION AND PERSISTENCE
         const metrics = calculateMetrics(newGrid, state.rootColonies, currentStep + 1);
         
-        if (metrics.total / (params.gridWidth * params.gridHeight) > params.maxDensityThreshold) {
+        const currentDensity = metrics.total / (params.gridWidth * params.gridHeight);
+
+        if (currentDensity > params.maxDensityThreshold) {
             console.warn("Density reached threshold. Grid expansion required.");
-            // TODO: Implement expansion logic (Step 11)
+            
+            const { newGrid: expandedGrid, newWidth, newHeight } = expandGridCells(newGrid, 2, params);
+            dispatch(expandGrid({ newGrid: expandedGrid, newWidth, newHeight }));
+            
+            newGrid = expandedGrid; 
         }
 
         // Save new state to Redux

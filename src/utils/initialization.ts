@@ -1,36 +1,58 @@
 // src/utils/initialization.ts
-import { CellStateMap } from '../models/types';
-import type  { SimulationParams, GridCell, Nutrient, Cell, } from '../models/types';  
+
 import { getRandomInt, generateId } from './random'; 
+import { CellStateMap, Cell } from '../models/types'; 
+import type { SimulationParams, GridCell, Nutrient, NutrientComponent, SerializedCell, SerializedRootColony } from '../models/types'; 
 
-// Початкова конфігурація ресурсів
-export const initialNutrientConfig: Nutrient = {
-    oxygen: { level: 100, consumptionRate: 5, diffusionRate: 0.1, decayRate: 0.01, threshold: 10 },
-    glucose: { level: 100, consumptionRate: 8, diffusionRate: 0.05, decayRate: 0.02, threshold: 15 },
-};
 
-// Початкові параметри симуляції
+/** Початкові/стандартні параметри симуляції */
 export const initialSimulationParams: SimulationParams = {
     gridWidth: 30,
     gridHeight: 30,
-    initialCellCount: 5, 
-    initialNutrientLevel: 100,
+    simulationSpeedMs: 200,
     maxDensityThreshold: 0.75,
-    simulationSpeedMs: 100,
+    initialCellCount: 5,
+    
+    initialCellGrowthRate: 0.05,
+    initialCellMutationChance: 0.0005,
+    
+    initialNutrientLevel: 100,
+    nutrientDiffusionRate: 0.15,
+    nutrientDecayRate: 0.01,
+    nutrientConsumptionRate: 0.5,
+    nutrientSurvivalThreshold: 5,
 };
 
-// Створення порожньої сітки з ресурсами
-export function createInitialGrid(width: number, height: number): GridCell[][] {
+/** Створює початкові параметри поживних речовин на основі SimulationParams. */
+function createNutrientParams(params: SimulationParams): Nutrient {
+    const base: NutrientComponent = {
+        level: params.initialNutrientLevel,
+        diffusionRate: params.nutrientDiffusionRate,
+        decayRate: params.nutrientDecayRate,
+        consumptionRate: params.nutrientConsumptionRate,
+        threshold: params.nutrientSurvivalThreshold,
+    };
+    
+    return {
+        oxygen: JSON.parse(JSON.stringify(base)),
+        glucose: JSON.parse(JSON.stringify(base)),
+    };
+}
+
+
+/** Створює початкову сітку GridCell, заповнену нульовими клітинами та початковими поживними речовинами. */
+export function createInitialGrid(width: number, height: number, params: SimulationParams = initialSimulationParams): GridCell[][] {
     const grid: GridCell[][] = [];
+    const initialNutrient = createNutrientParams(params); 
+    
     for (let y = 0; y < height; y++) {
         const row: GridCell[] = [];
         for (let x = 0; x < width; x++) {
             row.push({
+                x,
+                y,
                 cell: null,
-                nutrient: {
-                    oxygen: { ...initialNutrientConfig.oxygen, level: initialSimulationParams.initialNutrientLevel },
-                    glucose: { ...initialNutrientConfig.glucose, level: initialSimulationParams.initialNutrientLevel },
-                }
+                nutrient: JSON.parse(JSON.stringify(initialNutrient)),
             });
         }
         grid.push(row);
@@ -38,51 +60,109 @@ export function createInitialGrid(width: number, height: number): GridCell[][] {
     return grid;
 }
 
-// Функція для створення нової клітини
+/** Створює нову клітину з заданими параметрами. */
 export function createNewCell(
-    x: number,
-    y: number,
-    rootId: string,
-    color: string,
-    isMutated: boolean = false
-): Cell {
-    return {
-        id: generateId(),
-        rootColonyId: rootId,
-        position: { x, y },
-        state: isMutated ? CellStateMap.MUTATED : CellStateMap.HEALTHY, 
+    x: number, 
+    y: number, 
+    rootColonyId: string, 
+    color: string, 
+    isMutated: boolean = false,
+    params: SimulationParams = initialSimulationParams
+): SerializedCell { // Повертає SerializedCell
+    
+    // Створення початкових даних для класу
+    let initialData: SerializedCell = {
+        x,
+        y,
+        rootColonyId,
+        color,
+        state: isMutated ? CellStateMap.MUTATED : CellStateMap.HEALTHY,
         age: 0,
-        growthRate: 0.15,
-        mutationProbability: 0.02,
-        color: color,
+        growthRate: params.initialCellGrowthRate,
+        mutationProbability: params.initialCellMutationChance,
     };
+    
+    const cellInstance = new Cell(initialData);
+
+    // Встановлення мутованих параметрів, якщо потрібно (через внутрішній метод класу)
+    if (isMutated) {
+        // Ми не можемо викликати attemptMutation, оскільки це ініціалізація,
+        // тому маніпулюємо даними напряму або створюємо спеціалізований клас/метод.
+        // Для простоти:
+        initialData.growthRate = params.initialCellGrowthRate * 1.2;
+    }
+    
+    return cellInstance.toSerialized(); // Повертаємо серіалізовану форму
 }
 
-// Функція для розміщення початкових клітин-засновників
-export function placeInitialCells(
-    grid: GridCell[][],
-    params: SimulationParams
-): { grid: GridCell[][], colonies: { id: string, color: string }[] } {
+/** Розміщує початкову кількість клітин, створюючи колонії. */
+export function placeInitialCells(initialGrid: GridCell[][], params: SimulationParams): { grid: GridCell[][], colonies: SerializedRootColony[] } {
+    let grid = initialGrid;
+    const { gridWidth, gridHeight, initialCellCount } = params;
     
-    let currentGrid = JSON.parse(JSON.stringify(grid)); 
-    const colonies: { id: string, color: string }[] = [];
-    const colors = ['#FF5733', '#33FF57', '#3357FF', '#FF33A1', '#33FFF6']; 
+    const rootColonies: SerializedRootColony[] = []; 
+    const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899']; 
 
-    for (let i = 0; i < params.initialCellCount; i++) {
-        const rootId = generateId();
-        const colonyColor = colors[i % colors.length];
-
+    for (let i = 0; i < initialCellCount; i++) {
         let x, y;
-        do {
-            x = getRandomInt(0, params.gridWidth - 1);
-            y = getRandomInt(0, params.gridHeight - 1);
-        } while (currentGrid[y][x].cell !== null);
-
-        const newCell = createNewCell(x, y, rootId, colonyColor);
-        currentGrid[y][x].cell = newCell;
+        let attempts = 0;
         
-        colonies.push({ id: rootId, color: colonyColor });
+        do {
+            x = getRandomInt(0, gridWidth - 1);
+            y = getRandomInt(0, gridHeight - 1);
+            attempts++;
+            if (attempts > 1000) {
+                console.warn("Could not place all initial cells.");
+                return { grid, colonies: rootColonies };
+            }
+        } while (grid[y][x].cell !== null);
+
+        const rootColonyId = generateId();
+        const color = colors[i % colors.length];
+
+        const newCell = createNewCell(x, y, rootColonyId, color, false, params); 
+        grid[y][x].cell = newCell;
+        
+        rootColonies.push({ id: rootColonyId, color });
     }
 
-    return { grid: currentGrid, colonies };
+    return { grid, colonies: rootColonies };
+}
+
+/**
+ * Створює нову, більшу сітку та копіює стару сітку в центр нової.
+ */
+export function expandGridCells(oldGrid: GridCell[][], factor: number = 2, params: SimulationParams = initialSimulationParams) {
+    const oldHeight = oldGrid.length;
+    const oldWidth = oldGrid[0].length;
+    
+    const newWidth = oldWidth * factor;
+    const newHeight = oldHeight * factor;
+
+    let newGrid = createInitialGrid(newWidth, newHeight, params);
+
+    const offsetX = Math.floor((newWidth - oldWidth) / 2);
+    const offsetY = Math.floor((newHeight - oldHeight) / 2);
+
+    for (let y = 0; y < oldHeight; y++) {
+        for (let x = 0; x < oldWidth; x++) {
+            const oldCellData = oldGrid[y][x];
+            const newY = y + offsetY;
+            const newX = x + offsetX;
+            
+            // Копіюємо дані, оновлюючи координати
+            if (oldCellData.cell) {
+                 newGrid[newY][newX].cell = { 
+                    ...oldCellData.cell, 
+                    x: newX, 
+                    y: newY 
+                 };
+            }
+            newGrid[newY][newX].nutrient = oldCellData.nutrient;
+            newGrid[newY][newX].x = newX;
+            newGrid[newY][newX].y = newY;
+        }
+    }
+    
+    return { newGrid, newWidth, newHeight };
 }

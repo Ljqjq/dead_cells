@@ -1,4 +1,5 @@
-// src/components/GridVisualizer.tsx
+// src/components/GridVisualizer.tsx (ПОВНА ВЕРСІЯ)
+
 import React from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store/store';
@@ -9,9 +10,8 @@ const GridVisualizer: React.FC = () => {
     const { grid, params, currentStep } = useSelector((state: RootState) => state.simulation);
 
     const cellSize = 15; // Розмір клітинки в пікселях
+    const mutationHighlightColor = '#8b5cf6'; // Яскраво-пурпуровий (purple-500)
 
-    // ВИДАЛЕНО: Функцію renderCell, оскільки вона більше не використовується.
-    
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '8px' }}>Крок симуляції: {currentStep}</h3>
@@ -25,36 +25,48 @@ const GridVisualizer: React.FC = () => {
                 }}
             >
                 {grid.map((row, y) => 
-                    row.map((gridCell, x) => (
-                        <div 
-                            key={`${x}-${y}`} 
-                            style={{ 
-                                width: `${cellSize}px`,
-                                height: `${cellSize}px`,
-                                // Динамічне визначення кольору
-                                backgroundColor: gridCell.cell 
-                                    ? gridCell.cell.color 
-                                    : `rgb(200, 200, ${Math.min(255, Math.floor(gridCell.nutrient.glucose.level * 2.5))})`, 
-                                
-                                // Стилі для клітин (з бордером)
-                                ...(gridCell.cell && gridCell.cell.state !== CellStateMap.DEAD && { 
-                                    borderColor: '#000', 
-                                    borderWidth: '1px' 
-                                }),
-                                
-                                // Стилі для мертвих/мутованих клітин (якщо потрібно)
-                                ...(gridCell.cell && gridCell.cell.state === CellStateMap.DEAD && {
-                                    backgroundColor: 'rgba(55, 65, 81, 0.5)', 
-                                }),
-                                ...(gridCell.cell && gridCell.cell.state === CellStateMap.MUTATED && {
-                                    borderColor: '#b91c1c', 
-                                }),
+                    row.map((gridCell, x) => {
+                        const cell = gridCell.cell;
 
-                            }}
-                            title={`(${x}, ${y}) O2: ${gridCell.nutrient.oxygen.level.toFixed(1)}, Glu: ${gridCell.nutrient.glucose.level.toFixed(1)}`}
-                        >
-                        </div>
-                    ))
+                        // Визначення кольору фону: клітина або рівень глюкози
+                        let bgColor = cell 
+                            ? cell.color 
+                            : `rgb(200, 200, ${Math.min(255, Math.floor(gridCell.nutrient.glucose.level * 2.5))})`;
+                        
+                        // Стилі за замовчуванням
+                        let cellStyle: React.CSSProperties = {
+                            width: `${cellSize}px`,
+                            height: `${cellSize}px`,
+                            backgroundColor: bgColor,
+                            borderWidth: '1px',
+                            borderColor: '#000',
+                            boxSizing: 'border-box',
+                        };
+
+                        if (cell) {
+                            if (cell.state === CellStateMap.DEAD) {
+                                // Сірий для мертвих клітин
+                                cellStyle.backgroundColor = 'rgba(55, 65, 81, 0.5)'; 
+                                cellStyle.borderColor = 'transparent';
+                            } else if (cell.state === CellStateMap.MUTATED) {
+                                // Пурпуровий контур для мутованих клітин
+                                cellStyle.backgroundColor = mutationHighlightColor;
+                                cellStyle.borderWidth = '2px'; // Збільшений контур для кращої видимості
+                            }
+                        } else {
+                            // Якщо клітини немає, прибираємо контур, залишаючи колір поживних речовин
+                            cellStyle.borderWidth = '0';
+                        }
+                        
+                        return (
+                            <div 
+                                key={`${x}-${y}`} 
+                                style={cellStyle}
+                                title={`(${x}, ${y}) O2: ${gridCell.nutrient.oxygen.level.toFixed(1)}, Glu: ${gridCell.nutrient.glucose.level.toFixed(1)}`}
+                            >
+                            </div>
+                        );
+                    })
                 )}
             </div>
         </div>

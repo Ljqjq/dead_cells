@@ -1,55 +1,115 @@
 // src/models/types.ts
 
-// --- Базові Переліки (Використання const Object для рядкових літералів) ---
-
 export const CellStateMap = {
-    HEALTHY: 'healthy',
-    MUTATED: 'mutated',
-    DEAD: 'dead',
-    EMPTY: 'empty' 
-} as const; 
+    HEALTHY: 'HEALTHY',
+    MUTATED: 'MUTATED',
+    DEAD: 'DEAD',
+} as const;
 
+// Витягуємо тип стану
 export type CellState = typeof CellStateMap[keyof typeof CellStateMap];
 
-// --- Структура Ресурсу ---
-interface Resource {
+// --- 2. INTERFACES for Serialized Data (Redux) ---
+
+/** Параметри поживних речовин */
+export interface NutrientComponent {
     level: number;
-    consumptionRate: number; 
-    diffusionRate: number;   
-    decayRate: number;       
-    threshold: number;       
+    diffusionRate: number;
+    decayRate: number;
+    consumptionRate: number;
+    threshold: number; 
 }
 
-// --- Поживні Речовини (Двокомпонентні) ---
+/** Середовище клітини */
 export interface Nutrient {
-    oxygen: Resource;
-    glucose: Resource;
+    oxygen: NutrientComponent;
+    glucose: NutrientComponent;
 }
 
-// --- Клітина (Cell) ---
-export interface Cell {
-    id: string;
-    rootColonyId: string; 
-    position: { x: number; y: number };
-    state: CellState; 
+/** Серіалізована форма Cell, яка зберігається в Redux */
+export interface SerializedCell {
+    x: number;
+    y: number;
+    rootColonyId: string;
+    color: string;
+    state: CellState;
     age: number;
-    growthRate: number; 
+    growthRate: number;
     mutationProbability: number;
-    color: string; // Колір для візуалізації колонії
 }
 
-// --- Комірка Середовища (Сітка) ---
+/** Кожна клітинка сітки */
 export interface GridCell {
-    cell: Cell | null; 
+    x: number;
+    y: number;
+    cell: SerializedCell | null; 
     nutrient: Nutrient;
 }
 
-// --- Параметри Симуляції ---
+/** Серіалізована форма RootColony */
+export interface SerializedRootColony {
+    id: string;
+    color: string;
+}
+
+/** Параметри симуляції, які може налаштовувати користувач */
 export interface SimulationParams {
     gridWidth: number;
     gridHeight: number;
-    initialCellCount: number; 
-    initialNutrientLevel: number;
-    maxDensityThreshold: number; 
     simulationSpeedMs: number;
+    maxDensityThreshold: number; 
+    initialCellCount: number;
+
+    initialCellGrowthRate: number; 
+    initialCellMutationChance: number;
+
+    initialNutrientLevel: number;
+    nutrientDiffusionRate: number;
+    nutrientDecayRate: number;
+    nutrientConsumptionRate: number;
+    nutrientSurvivalThreshold: number;
+}
+
+// --- 3. CLASS for OOP Logic ---
+
+/** Клас, що містить логіку клітини. Приймає/повертає серіалізовані дані. */
+export class Cell {
+    private data: SerializedCell;
+
+    constructor(serializedData: SerializedCell) {
+        // Приймаємо копію даних для внутрішньої роботи
+        this.data = { ...serializedData }; 
+    }
+
+    /** Метод для логіки мутації (ООП) */
+    public attemptMutation(checkProbability: (prob: number) => boolean): void {
+        if (this.data.state === CellStateMap.HEALTHY && checkProbability(this.data.mutationProbability)) {
+            this.data.state = CellStateMap.MUTATED;
+            this.data.growthRate *= 1.2; 
+        }
+    }
+    
+    /** Метод для логіки старіння (ООП) */
+    public ageCell(): void {
+        this.data.age++;
+    }
+    
+    /** Метод для перевірки життєздатності (ООП) */
+    public checkViability(hasEnoughO2: boolean, hasEnoughGlu: boolean): boolean {
+        if (!hasEnoughO2 || !hasEnoughGlu) {
+            this.data.state = CellStateMap.DEAD;
+            return false;
+        }
+        return true;
+    }
+
+    /** Повертає оновлений серіалізований об'єкт для Redux. */
+    public toSerialized(): SerializedCell {
+        return this.data;
+    }
+    
+    /** Дозволяє отримати доступ до даних для обчислень (наприклад, швидкості росту) */
+    public get dataSnapshot(): Readonly<SerializedCell> {
+        return this.data;
+    }
 }

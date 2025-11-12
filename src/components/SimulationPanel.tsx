@@ -4,13 +4,14 @@ import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store/store';
 import { startInitialization, runSimulationStep } from '../services/simulationService';
 import { toggleRunning, setParams } from '../store/simulationSlice';
+import type { SimulationParams } from '../models/types'; // Імпортуємо тип параметрів
 
 const SimulationPanel: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    // ОНОВЛЕНО: Додаємо rootColonies для перевірки ініціалізації
     const { isRunning, currentStep, params, rootColonies } = useSelector((state: RootState) => state.simulation);
     
-    const [speed, setSpeed] = useState(params.simulationSpeedMs);
+    // Використовуємо локальний стан для швидкості, щоб не викликати dispatch при кожному русі повзунка
+    const [speed, setSpeed] = useState(params.simulationSpeedMs); 
 
     const intervalRef = useRef<number | null>(null);
 
@@ -50,17 +51,20 @@ const SimulationPanel: React.FC = () => {
         dispatch(setParams({ simulationSpeedMs: newSpeed }));
     };
 
-    // ВИПРАВЛЕННЯ УМОВИ: Симуляція ініціалізована, якщо є кореневі колонії
+    // Обробник змін числових параметрів
+    const handleParamChange = (key: keyof SimulationParams, value: string) => {
+        const numValue = parseFloat(value);
+        if (!isNaN(numValue)) {
+            dispatch(setParams({ [key]: numValue }));
+        }
+    };
+    
     const isInitialized = rootColonies.length > 0;
-    
-    // Визначення класів
     const startPauseClass = isRunning ? 'btn-pause' : 'btn-start';
-    
-    // Кнопка Старт/Пауза відключена, лише якщо симуляція ще не ініціалізована І не запущена.
     const isDisabled = !isInitialized && !isRunning; 
 
     return (
-        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', backgroundColor: '#f9fafb', borderRadius: '8px' }}>
             <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Керування Симуляцією</h2>
             
             <button
@@ -82,7 +86,7 @@ const SimulationPanel: React.FC = () => {
                 Поточний Крок: **{currentStep}**
             </div>
 
-            <div className="panel-setting-group">
+            <div className="panel-setting-group" style={{ borderTop: '1px solid #ccc', paddingTop: '10px' }}>
                  <h3 className="panel-setting-title">Налаштування</h3>
                  
                  <label className="label-text">
@@ -97,8 +101,62 @@ const SimulationPanel: React.FC = () => {
                     className="range-input"
                  />
                  
-                 <p className="text-xs" style={{ marginTop: '8px' }}>Ширина: {params.gridWidth}, Висота: {params.gridHeight}</p>
-                 <p className="text-xs">Поч. засновників: {params.initialCellCount}</p>
+                 {/* --- ПАРАМЕТРИ КЛІТИН --- */}
+                 <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>🦠 Клітини</h4>
+                 
+                 <label className="label-text">
+                    Шанс Мутації (0.0001 - 0.1):
+                 </label>
+                 <input
+                    type="number"
+                    step="0.0001"
+                    min="0"
+                    max="1"
+                    value={params.initialCellMutationChance}
+                    onChange={(e) => handleParamChange('initialCellMutationChance', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+                 
+                 <label className="label-text">
+                    Швидкість Росту (0.01 - 1.0):
+                 </label>
+                 <input
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max="1.0"
+                    value={params.initialCellGrowthRate}
+                    onChange={(e) => handleParamChange('initialCellGrowthRate', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+                 
+                 {/* --- ПАРАМЕТРИ СЕРЕДОВИЩА --- */}
+                 <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>💧 Середовище</h4>
+                 
+                 <label className="label-text">
+                    Початковий Рівень Ресурсів:
+                 </label>
+                 <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={params.initialNutrientLevel}
+                    onChange={(e) => handleParamChange('initialNutrientLevel', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+
+                 <label className="label-text">
+                    Швидкість Дифузії (0.0 - 1.0):
+                 </label>
+                 <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    max="1"
+                    value={params.nutrientDiffusionRate}
+                    onChange={(e) => handleParamChange('nutrientDiffusionRate', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
             </div>
         </div>
     );
