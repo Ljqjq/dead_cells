@@ -1,158 +1,166 @@
 // src/services/simulationService.ts
 
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import type { RootState } from '../store/store'; 
-
-// 1. Імпорт ЗНАЧЕНЬ (редюсерів та екшенів)
+import type { RootState } from '../store/store';
+import { initializeSimulation, updateGrid, addAnalysisData, expandGrid } from '../store/simulationSlice';
 import { 
-    updateGrid, 
-    addAnalysisData, 
-    initializeSimulation, 
-    expandGrid, 
-} from '../store/simulationSlice.ts'; 
-// 2. Імпорт ТИПІВ
-import type { SimulationState } from '../store/simulationSlice.ts'; 
-
-import { placeInitialCells, createInitialGrid, createNewCell, expandGridCells } from '../utils/initialization'; 
-import { getRandomInt, checkProbability } from '../utils/random';
-
-// Імпорт КЛАСУ Cell та КОНСТАНТИ CellStateMap
-import { CellStateMap, Cell } from '../models/types'; 
-// Імпорт ТИПІВ
-import type { GridCell, SerializedCell } from '../models/types'; 
+    createInitialGrid, 
+    placeInitialCells, 
+    createNewCell, 
+    expandGridCells // ВИКОРИСТОВУЄТЬСЯ ДЛЯ РОЗШИРЕННЯ
+} from '../utils/initialization';
+import { 
+    Cell, 
+    CellStateMap, 
+    type GridCell, 
+    type SerializedCell, 
+    type SimulationParams 
+} from '../models/types';
+import { getRandomInt } from '../utils/random';
 
 
 // ----------------------------------------------------------------------
-// A. ІНІЦІАЛІЗАЦІЯ (Thunk)
+// A. ASYNC THUNKS
 // ----------------------------------------------------------------------
 
+/** * Ініціалізує сітку та колонії. 
+ */
 export const startInitialization = createAsyncThunk(
     'simulation/startInitialization',
     async (_, { getState, dispatch }) => {
-        const state = (getState() as RootState).simulation;
-        const params = state.params;
-
-        let initialGrid = createInitialGrid(params.gridWidth, params.gridHeight, params); 
-        const { grid: finalGrid, colonies } = placeInitialCells(initialGrid, params);
-
-        dispatch(initializeSimulation({ grid: finalGrid, colonies }));
+        const params: SimulationParams = (getState() as RootState).simulation.params;
         
-        const analysisData = calculateMetrics(finalGrid, colonies, 0);
-        dispatch(addAnalysisData(analysisData));
+        let grid = createInitialGrid(params.gridWidth, params.gridHeight, params);
+        const { grid: initializedGrid, colonies } = placeInitialCells(grid, params);
+        
+        dispatch(initializeSimulation({ grid: initializedGrid, colonies }));
     }
 );
 
-
-// ----------------------------------------------------------------------
-// B. ОСНОВНИЙ ЦИКЛ СИМУЛЯЦІЇ (Thunk)
-// ----------------------------------------------------------------------
-
+/** * Виконує один крок симуляції (споживання, ріст/поділ, дифузія).
+ */
 export const runSimulationStep = createAsyncThunk(
     'simulation/runSimulationStep',
     async (_, { getState, dispatch }) => {
-        const state = (getState() as RootState).simulation;
-        const params = state.params;
-        const currentStep = state.currentStep;
-
-        let newGrid: GridCell[][] = JSON.parse(JSON.stringify(state.grid));
+        const state = getState() as RootState;
+        const params = state.simulation.params;
         
-        // 1. STAGE: GROWTH, MUTATION, AND DEATH
+        let newGrid: GridCell[][] = JSON.parse(JSON.stringify(state.simulation.grid));
+        
+        const checkProbability = (prob: number) => Math.random() < prob;
+        
+        let healthyCount = 0;
+        let mutatedCount = 0;
+
+        // 1. STAGE: GROWTH, MUTATION, CONSUMPTION, AND DEATH
         for (let y = 0; y < params.gridHeight; y++) {
             for (let x = 0; x < params.gridWidth; x++) {
                 const gridCell = newGrid[y][x];
                 
                 if (gridCell.cell && gridCell.cell.state !== CellStateMap.DEAD) {
                     
-                    // 1. СТВОРЕННЯ ЕКЗЕМПЛЯРА КЛАСУ (Десеріалізація)
                     const cellInstance = new Cell(gridCell.cell as SerializedCell); 
                     const nutrient = gridCell.nutrient;
                     const cellData = cellInstance.dataSnapshot; 
                     
-                    // --- 1.1. Mutation (Викликаємо метод класу ООП) ---
+                    // --- 1.1. Mutation ---
                     cellInstance.attemptMutation(checkProbability);
 
                     // --- 1.2. Consumption and Viability Check ---
-                    // ВИКОРИСТОВУЄМО ПАРАМЕТРИ З КЛІТИНИ (cellData.oxygenParams)
+                    
                     const consumedO2 = cellData.growthRate * cellData.oxygenParams.consumptionRate;
                     const consumedGlu = cellData.growthRate * cellData.glucoseParams.consumptionRate;
 
-                    // ПЕРЕВІРКА ЖИТТЄЗДАТНОСТІ НА ОСНОВІ ПАРАМЕТРІВ КЛІТИНИ
                     const hasEnoughO2 = nutrient.oxygen.level >= cellData.oxygenParams.survivalThreshold;
                     const hasEnoughGlu = nutrient.glucose.level >= cellData.glucoseParams.survivalThreshold;
 
                     nutrient.oxygen.level = Math.max(0, nutrient.oxygen.level - consumedO2);
                     nutrient.glucose.level = Math.max(0, nutrient.glucose.level - consumedGlu);
                     
-                    // ВИКЛИК МЕТОДУ: Перевіряємо життєздатність
-                    if (!cellInstance.checkViability(hasEnoughO2, hasEnoughGlu)) {
+                    if (!cellInstance.checkViability(hasEnoughO2, hasEnoughGlu)) { 
                         newGrid[y][x].cell = null; 
                         continue; 
                     }
                     
-                    // --- 1.3. Growth / Division ---
-                    if (checkProbability(cellData.growthRate)) { 
-                        const neighbors = getNeighbors(x, y, params.gridWidth, params.gridHeight);
-                        const emptyNeighbors = neighbors.filter(pos => newGrid[pos.y][pos.x].cell === null);
-                        
-                        if (emptyNeighbors.length > 0) {
-                            const newPos = emptyNeighbors[getRandomInt(0, emptyNeighbors.length - 1)];
-                            
-                            // Створення нової клітини (серіалізованої)
-                            const newCell = createNewCell(
-                                newPos.x,
-                                newPos.y,
-                                cellData.rootColonyId,
-                                cellData.color,
-                                cellData.state === CellStateMap.MUTATED, 
-                                params
-                            );
-
-                            newGrid[newPos.y][newPos.x].cell = newCell;
-                        }
+                    // --- 1.3. Growth and Division ---
+                    if (checkProbability(cellData.growthRate)) {
+                        attemptDivision(newGrid, x, y, cellInstance.dataSnapshot, params);
                     }
-
-                    // ВИКЛИК МЕТОДУ: Старіння
-                    cellInstance.ageCell();
                     
-                    // 2. СЕРІАЛІЗАЦІЯ: Зберігаємо оновлену клітину назад
+                    // --- 1.4. Age ---
+                    cellInstance.ageCell();
+
+                    // --- 1.5. Metrics ---
+                    if (cellData.state === CellStateMap.MUTATED) {
+                        mutatedCount++;
+                    } else {
+                        healthyCount++;
+                    }
+                    
                     newGrid[y][x].cell = cellInstance.toSerialized(); 
                 }
             }
         }
         
-        // 2. STAGE: DIFFUSION AND DECAY
+        // 2. STAGE: DIFFUSION 
         newGrid = runDiffusionStep(newGrid, params.gridWidth, params.gridHeight);
         
-        // Apply Decay after diffusion
-        for (let y = 0; y < params.gridHeight; y++) {
-             for (let x = 0; x < params.gridWidth; x++) {
-                 const n = newGrid[y][x].nutrient;
-                 n.oxygen.level = Math.max(0, n.oxygen.level * (1 - n.oxygen.decayRate));
-                 n.glucose.level = Math.max(0, n.glucose.level * (1 - n.glucose.decayRate));
-             }
-        }
-
-        // 3. STAGE: CHECK FOR EXPANSION AND PERSISTENCE
-        const metrics = calculateMetrics(newGrid, state.rootColonies, currentStep + 1);
+        // **Етап Decay (Розпаду) ВИДАЛЕНО**
         
-        const currentDensity = metrics.total / (params.gridWidth * params.gridHeight);
-
-        if (currentDensity > params.maxDensityThreshold) {
-            console.warn("Density reached threshold. Grid expansion required.");
-            
-            const { newGrid: expandedGrid, newWidth, newHeight } = expandGridCells(newGrid, 2, params);
-            dispatch(expandGrid({ newGrid: expandedGrid, newWidth, newHeight }));
-            
-            newGrid = expandedGrid; 
+        // 3. STAGE: EXPANSION CHECK (РОЗШИРЕННЯ ВІДНОВЛЕНО)
+        const totalCells = healthyCount + mutatedCount;
+        const maxCells = params.gridWidth * params.gridHeight;
+        
+        if (totalCells / maxCells > params.maxDensityThreshold) {
+             const { newGrid: expandedGrid, newWidth, newHeight } = expandGridCells(newGrid, 2, params);
+             
+             dispatch(expandGrid({ newGrid: expandedGrid, newWidth, newHeight }));
+             
+             // Зупиняємо поточний крок, очікуючи на наступний крок з новою сіткою
+             return; 
         }
 
-        // Save new state to Redux
+        // 4. DISPATCH UPDATES
         dispatch(updateGrid(newGrid));
-        dispatch(addAnalysisData(metrics));
-
-        return true;
+        dispatch(addAnalysisData({
+            step: state.simulation.currentStep + 1,
+            healthy: healthyCount,
+            mutated: mutatedCount,
+            total: totalCells,
+        }));
     }
 );
+
+
+// ----------------------------------------------------------------------
+// B. DIVISION LOGIC
+// ----------------------------------------------------------------------
+
+function attemptDivision(grid: GridCell[][], x: number, y: number, parentCell: SerializedCell, params: SimulationParams): boolean {
+    const { gridWidth, gridHeight } = params;
+    
+    const neighborsPos = getNeighbors(x, y, gridWidth, gridHeight);
+    const emptyNeighbors = neighborsPos.filter(pos => grid[pos.y][pos.x].cell === null);
+
+    if (emptyNeighbors.length === 0) {
+        return false; 
+    }
+
+    const targetPos = emptyNeighbors[getRandomInt(0, emptyNeighbors.length - 1)];
+    
+    const newCellData = createNewCell(
+        targetPos.x, 
+        targetPos.y, 
+        parentCell.rootColonyId, 
+        parentCell.color, 
+        parentCell.state === CellStateMap.MUTATED, 
+        params
+    );
+
+    grid[targetPos.y][targetPos.x].cell = newCellData;
+    
+    return true;
+}
 
 
 // ----------------------------------------------------------------------
@@ -169,6 +177,7 @@ function runDiffusionStep(grid: GridCell[][], width: number, height: number): Gr
             
             let sumO2Level = currentCell.nutrient.oxygen.level;
             let sumGluLevel = currentCell.nutrient.glucose.level;
+            
             const count = neighborsPos.length + 1; 
 
             neighborsPos.forEach(pos => {
@@ -197,10 +206,11 @@ function getNeighbors(x: number, y: number, width: number, height: number): { x:
     const neighbors = [];
     for (let dy = -1; dy <= 1; dy++) {
         for (let dx = -1; dx <= 1; dx++) {
-            if (dx === 0 && dy === 0) continue;
+            if (dx === 0 && dy === 0) continue; 
+            
             const nx = x + dx;
             const ny = y + dy;
-
+            
             if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
                 neighbors.push({ x: nx, y: ny });
             }
@@ -208,23 +218,3 @@ function getNeighbors(x: number, y: number, width: number, height: number): { x:
     }
     return neighbors;
 }
-
-const calculateMetrics = (
-    grid: GridCell[][], 
-    colonies: SimulationState['rootColonies'], 
-    step: number
-): { step: number, healthy: number, mutated: number, total: number } => {
-    let healthy = 0;
-    let mutated = 0;
-    let total = 0;
-
-    grid.forEach(row => row.forEach(gc => {
-        if (gc.cell) {
-            total++;
-            if (gc.cell.state === CellStateMap.HEALTHY) healthy++;
-            if (gc.cell.state === CellStateMap.MUTATED) mutated++;
-        }
-    }));
-
-    return { step, healthy, mutated, total };
-};

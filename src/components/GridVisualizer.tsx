@@ -7,7 +7,7 @@ import { CellStateMap } from '../models/types';
 
 // Конфігурація відображення
 const MUTATION_HIGHLIGHT_COLOR = '#8b5cf6'; // Пурпуровий
-const EMPTY_COLOR = '#e5e7eb'; // Цей колір більше не використовується як константа, оскільки фон динамічний
+
 
 const GridVisualizer: React.FC = () => {
     const { grid, params, currentStep } = useSelector((state: RootState) => state.simulation);
@@ -26,7 +26,7 @@ const GridVisualizer: React.FC = () => {
         const cellSize = params.cellSizePx; 
         
         // Встановлюємо максимальний рівень, щоб коректно нормувати колір
-        const MAX_NUTRIENT_LEVEL = params.initialNutrientLevel; // Використовуємо початковий рівень як еталон
+        const MAX_NUTRIENT_LEVEL = 100; // Використовуємо початковий рівень як еталон
 
         // Очищення та встановлення розмірів
         canvas.width = width * cellSize;
@@ -93,7 +93,7 @@ const GridVisualizer: React.FC = () => {
                 }
             }
         }
-    }, [grid, params.gridWidth, params.gridHeight, params.cellSizePx, params.initialNutrientLevel]); 
+    }, [grid, params.gridWidth, params.gridHeight, params.cellSizePx]); 
     // Додано залежність від initialNutrientLevel, оскільки він використовується для нормалізації
 
     return (

@@ -24,26 +24,32 @@ export interface SimulationState {
     analysisHistory: AnalysisData[];
 }
 
-// Функція для створення початкової порожньої сітки (потрібна лише для початкового стану)
-const createInitialEmptyGrid = (width: number, height: number, initialNutrientLevel: number): GridCell[][] => {
+// Функція для створення початкової порожньої сітки
+const createInitialEmptyGrid = (params: SimulationParams): GridCell[][] => {
     const grid: GridCell[][] = [];
-    // Використовуємо лише параметри, що залежать від середовища
-    const initialNutrientComponent = { 
-        level: initialNutrientLevel, 
-        diffusionRate: 0, // У початковому стані використовуємо нульові значення для швидкості
-        decayRate: 0, 
+    
+    // Створення базових поживних компонентів для порожньої сітки
+    const initialNutrientComponentO2 = { 
+        level: params.initialOxygenLevel, 
+        diffusionRate: params.oxygenDiffusionRate, 
+        // decayRate ВИДАЛЕНО
+    };
+    const initialNutrientComponentGlu = { 
+        level: params.initialGlucoseLevel, 
+        diffusionRate: params.glucoseDiffusionRate, 
+        // decayRate ВИДАЛЕНО
     };
     
-    for (let y = 0; y < height; y++) {
+    for (let y = 0; y < params.gridHeight; y++) {
         const row: GridCell[] = [];
-        for (let x = 0; x < width; x++) {
+        for (let x = 0; x < params.gridWidth; x++) {
             row.push({
                 x,
                 y,
                 cell: null,
                 nutrient: {
-                    oxygen: JSON.parse(JSON.stringify(initialNutrientComponent)),
-                    glucose: JSON.parse(JSON.stringify(initialNutrientComponent)),
+                    oxygen: JSON.parse(JSON.stringify(initialNutrientComponentO2)),
+                    glucose: JSON.parse(JSON.stringify(initialNutrientComponentGlu)),
                 },
             });
         }
@@ -55,12 +61,7 @@ const createInitialEmptyGrid = (width: number, height: number, initialNutrientLe
 
 const initialState: SimulationState = {
     params: initialSimulationParams,
-    // Примітка: використовуємо початкові параметри для створення порожньої сітки
-    grid: createInitialEmptyGrid(
-        initialSimulationParams.gridWidth, 
-        initialSimulationParams.gridHeight, 
-        initialSimulationParams.initialNutrientLevel
-    ),
+    grid: createInitialEmptyGrid(initialSimulationParams), 
     rootColonies: [],
     currentStep: 0,
     isRunning: false,
@@ -105,17 +106,28 @@ const simulationSlice = createSlice({
 
         setParams: (state, action: PayloadAction<Partial<SimulationParams>>) => {
             state.params = { ...state.params, ...action.payload };
-            // При зміні ключових параметрів, що впливають на сітку/клітини, скидаємо стан
-            if (action.payload.gridWidth || 
+            
+            // Перелік усіх параметрів, зміна яких вимагає реініціалізації (скидання сітки)
+            const shouldReset = (
+                action.payload.gridWidth || 
                 action.payload.gridHeight || 
                 action.payload.initialCellCount ||
-                action.payload.initialCellConsumptionRate !== undefined || // НОВЕ
-                action.payload.initialCellSurvivalThreshold !== undefined // НОВЕ
-            ) {
+                action.payload.initialCellConsumptionRate !== undefined ||
+                action.payload.initialCellSurvivalThreshold !== undefined ||
+                
+                // ЗМІНА ПОЧАТКОВИХ РІВНІВ ЧИ ДИФУЗІЇ ВИМАГАЄ СКИДАННЯ
+                action.payload.initialOxygenLevel !== undefined ||
+                action.payload.oxygenDiffusionRate !== undefined ||
+                action.payload.initialGlucoseLevel !== undefined ||
+                action.payload.glucoseDiffusionRate !== undefined
+            );
+
+            if (shouldReset) {
                  state.currentStep = 0;
                  state.isRunning = false;
                  state.rootColonies = [];
                  state.analysisHistory = [];
+                 state.grid = createInitialEmptyGrid(state.params); 
             }
         },
     },

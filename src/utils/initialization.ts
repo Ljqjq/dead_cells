@@ -9,7 +9,7 @@ import type {
     NutrientComponent, 
     SerializedCell, 
     SerializedRootColony, 
-    CellNutrientParams // Використовуємо CellNutrientParams
+    CellNutrientParams 
 } from '../models/types'; 
 
 
@@ -24,11 +24,16 @@ export const initialSimulationParams: SimulationParams = {
     initialCellGrowthRate: 0.05,
     initialCellMutationChance: 0.0005,
     
-    initialNutrientLevel: 100,
-    nutrientDiffusionRate: 0.15,
-    nutrientDecayRate: 0.01,
+    // --- КИСЕНЬ (OXYGEN) ---
+    initialOxygenLevel: 100,       
+    oxygenDiffusionRate: 0.9,      
+    // oxygenDecayRate ВИДАЛЕНО
     
-    // НОВІ: Базові параметри, які клітина успадковує
+    // --- ГЛЮКОЗА (GLUCOSE) ---
+    initialGlucoseLevel: 100,      
+    glucoseDiffusionRate: 0.15,    
+    // glucoseDecayRate ВИДАЛЕНО
+    
     initialCellConsumptionRate: 0.5, 
     initialCellSurvivalThreshold: 5, 
 
@@ -37,16 +42,19 @@ export const initialSimulationParams: SimulationParams = {
 
 /** Створює початкові параметри поживних речовин, що залежать від СЕРЕДОВИЩА. */
 function createNutrientParams(params: SimulationParams): Nutrient {
-    const base: NutrientComponent = {
-        level: params.initialNutrientLevel,
-        diffusionRate: params.nutrientDiffusionRate,
-        decayRate: params.nutrientDecayRate,
+    const oxygen: NutrientComponent = {
+        level: params.initialOxygenLevel,
+        diffusionRate: params.oxygenDiffusionRate,
+        // decayRate ВИДАЛЕНО
     };
     
-    return {
-        oxygen: JSON.parse(JSON.stringify(base)),
-        glucose: JSON.parse(JSON.stringify(base)),
+    const glucose: NutrientComponent = {
+        level: params.initialGlucoseLevel,
+        diffusionRate: params.glucoseDiffusionRate,
+        // decayRate ВИДАЛЕНО
     };
+    
+    return { oxygen, glucose }; 
 }
 
 
@@ -62,7 +70,7 @@ export function createInitialGrid(width: number, height: number, params: Simulat
                 x,
                 y,
                 cell: null,
-                nutrient: JSON.parse(JSON.stringify(initialNutrient)),
+                nutrient: JSON.parse(JSON.stringify(initialNutrient)), 
             });
         }
         grid.push(row);
@@ -80,13 +88,11 @@ export function createNewCell(
     params: SimulationParams = initialSimulationParams
 ): SerializedCell { 
     
-    // Базові параметри для поживних речовин клітини, які тепер зберігаються в клітині
     const baseCellNutrientParams: CellNutrientParams = {
         consumptionRate: params.initialCellConsumptionRate,
         survivalThreshold: params.initialCellSurvivalThreshold,
     };
     
-    // Створення початкових даних
     let initialData: SerializedCell = {
         x,
         y,
@@ -97,14 +103,11 @@ export function createNewCell(
         growthRate: params.initialCellGrowthRate,
         mutationProbability: params.initialCellMutationChance,
         
-        // Ініціалізація нових параметрів
         oxygenParams: JSON.parse(JSON.stringify(baseCellNutrientParams)),
         glucoseParams: JSON.parse(JSON.stringify(baseCellNutrientParams)),
     };
     
-    // Якщо ініціалізуємо як мутовану, застосовуємо логіку мутації
     if (isMutated) {
-        // Логіка для мутантів (вищий ріст, споживання, поріг смерті)
         initialData.growthRate *= 1.2;
         initialData.oxygenParams.consumptionRate *= 1.5;
         initialData.glucoseParams.consumptionRate *= 1.5;
@@ -150,9 +153,7 @@ export function placeInitialCells(initialGrid: GridCell[][], params: SimulationP
     return { grid, colonies: rootColonies };
 }
 
-/**
- * Створює нову, більшу сітку та копіює стару сітку в центр нової.
- */
+/** Створює нову, більшу сітку та копіює стару сітку в центр нової. */
 export function expandGridCells(oldGrid: GridCell[][], factor: number = 2, params: SimulationParams = initialSimulationParams) {
     const oldHeight = oldGrid.length;
     const oldWidth = oldGrid[0].length;
@@ -171,7 +172,6 @@ export function expandGridCells(oldGrid: GridCell[][], factor: number = 2, param
             const newY = y + offsetY;
             const newX = x + offsetX;
             
-            // Копіюємо дані, оновлюючи координати
             if (oldCellData.cell) {
                  newGrid[newY][newX].cell = { 
                     ...oldCellData.cell, 

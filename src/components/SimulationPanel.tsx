@@ -86,8 +86,10 @@ const SimulationPanel: React.FC = () => {
                 Поточний Крок: **{currentStep}**
             </div>
 
-            <div className="panel-setting-group" style={{ borderTop: '1px solid #ccc', paddingTop: '10px' }}>
-                 <h3 className="panel-setting-title">Налаштування</h3>
+            ---
+            
+            <div className="panel-setting-group">
+                 <h3 className="panel-setting-title">⚙️ Налаштування</h3>
                  
                  <label className="label-text">
                     Швидкість (кроків/мс): {speed}
@@ -118,9 +120,8 @@ const SimulationPanel: React.FC = () => {
                  />
                  
                  {/* --- ПАРАМЕТРИ КЛІТИН --- */}
-                 <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>🦠 Клітини</h4>
+                 <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>🦠 Клітини (Базові)</h4>
                  
-                 {/* НОВИЙ КОНТРОЛЕР: ШАНС МУТАЦІЇ */}
                  <label className="label-text">
                     Шанс Мутації (0.0001 - 0.1):
                  </label>
@@ -134,7 +135,6 @@ const SimulationPanel: React.FC = () => {
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
                  
-                 {/* НОВИЙ КОНТРОЛЕР: ШВИДКІСТЬ РОСТУ */}
                  <label className="label-text">
                     Швидкість Росту (0.01 - 1.0):
                  </label>
@@ -148,7 +148,6 @@ const SimulationPanel: React.FC = () => {
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
                  
-                 {/* НОВИЙ КОНТРОЛЕР: ШВИДКІСТЬ СПОЖИВАННЯ */}
                  <label className="label-text">
                     Базове Споживання (Consumption Rate):
                  </label>
@@ -161,7 +160,6 @@ const SimulationPanel: React.FC = () => {
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
 
-                 {/* НОВИЙ КОНТРОЛЕР: ПОРІГ ВИЖИВАННЯ */}
                  <label className="label-text">
                     Базовий Поріг Виживання (Threshold):
                  </label>
@@ -175,33 +173,67 @@ const SimulationPanel: React.FC = () => {
                  />
 
                  
-                 {/* --- ПАРАМЕТРИ СЕРЕДОВИЩА --- */}
-                 <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>💧 Середовище</h4>
+                 {/* --- ПАРАМЕТРИ СЕРЕДОВИЩА: КИСЕНЬ ТА ГЛЮКОЗА --- */}
+                 
+                 <h4 style={{ fontWeight: 'bold', marginTop: '15px', color: '#3b82f6' }}>🌬️ Середовище: Кисень ($O_2$)</h4>
                  
                  <label className="label-text">
-                    Початковий Рівень Ресурсів:
+                    Початковий Рівень $O_2$:
                  </label>
                  <input
                     type="number"
-                    step="1"
+                    step="5"
                     min="0"
-                    value={params.initialNutrientLevel}
-                    onChange={(e) => handleParamChange('initialNutrientLevel', e.target.value)}
+                    value={params.initialOxygenLevel}
+                    onChange={(e) => handleParamChange('initialOxygenLevel', e.target.value)}
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
 
                  <label className="label-text">
-                    Швидкість Дифузії (0.0 - 1.0):
+                    Швидкість Дифузії $O_2$ (0.0 - 1.0):
                  </label>
                  <input
                     type="number"
-                    step="0.01"
+                    step="0.05"
                     min="0"
                     max="1"
-                    value={params.nutrientDiffusionRate}
-                    onChange={(e) => handleParamChange('nutrientDiffusionRate', e.target.value)}
+                    value={params.oxygenDiffusionRate}
+                    onChange={(e) => handleParamChange('oxygenDiffusionRate', e.target.value)}
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
+                 
+                 {/* Decay Rate для O2 ВИДАЛЕНО */}
+
+
+                 <h4 style={{ fontWeight: 'bold', marginTop: '10px', color: '#22c55e' }}>🍚 Середовище: Глюкоза (Glucose)</h4>
+                 
+                 <label className="label-text">
+                    Початковий Рівень Glucose:
+                 </label>
+                 <input
+                    type="number"
+                    step="5"
+                    min="0"
+                    value={params.initialGlucoseLevel}
+                    onChange={(e) => handleParamChange('initialGlucoseLevel', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+
+                 <label className="label-text">
+                    Швидкість Дифузії Glucose (0.0 - 1.0):
+                 </label>
+                 <input
+                    type="number"
+                    step="0.05"
+                    min="0"
+                    max="1"
+                    value={params.glucoseDiffusionRate}
+                    onChange={(e) => handleParamChange('glucoseDiffusionRate', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+                 
+                 {/* Decay Rate для Glucose ВИДАЛЕНО */}
+
             </div>
         </div>
     );
