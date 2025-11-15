@@ -1,6 +1,6 @@
 // src/models/types.ts
 
-// --- 1. CONSTANTS (ЗАМІСТЬ ENUMS) ---
+// --- 1. CONSTANTS ---
 
 /** Мапа станів клітини */
 export const CellStateMap = {
@@ -15,19 +15,23 @@ export type CellState = typeof CellStateMap[keyof typeof CellStateMap];
 
 // --- 2. INTERFACES for Serialized Data (Redux) ---
 
-/** Параметри поживних речовин */
+/** Параметри поживних речовин, що залежать від СЕРЕДОВИЩА (Diffusion, Decay) */
 export interface NutrientComponent {
     level: number;
     diffusionRate: number;
     decayRate: number;
-    consumptionRate: number;
-    threshold: number; 
 }
 
 /** Середовище клітини */
 export interface Nutrient {
     oxygen: NutrientComponent;
     glucose: NutrientComponent;
+}
+
+/** Параметри виживання, специфічні для типу клітини (Consumption, Threshold) */
+export interface CellNutrientParams {
+    consumptionRate: number; // Як швидко клітина споживає ресурс
+    survivalThreshold: number; // Мінімальний рівень ресурсу для виживання
 }
 
 /** Серіалізована форма Cell, яка зберігається в Redux */
@@ -40,6 +44,10 @@ export interface SerializedCell {
     age: number;
     growthRate: number;
     mutationProbability: number;
+    
+    // НОВІ ПОЛЯ, що описують, як клітина взаємодіє з поживними речовинами
+    oxygenParams: CellNutrientParams;
+    glucoseParams: CellNutrientParams;
 }
 
 /** Кожна клітинка сітки */
@@ -70,10 +78,11 @@ export interface SimulationParams {
     initialNutrientLevel: number;
     nutrientDiffusionRate: number;
     nutrientDecayRate: number;
-    nutrientConsumptionRate: number;
-    nutrientSurvivalThreshold: number;
     
-    // НОВЕ: Розмір клітинки для візуалізації
+    // Початкові значення для параметрів, що зберігаються в клітині
+    initialCellConsumptionRate: number; 
+    initialCellSurvivalThreshold: number; 
+
     cellSizePx: number; 
 }
 
@@ -91,7 +100,13 @@ export class Cell {
     public attemptMutation(checkProbability: (prob: number) => boolean): void {
         if (this.data.state === CellStateMap.HEALTHY && checkProbability(this.data.mutationProbability)) {
             this.data.state = CellStateMap.MUTATED;
+            
+            // Мутована логіка: швидше росте, більше споживає, легше гине
             this.data.growthRate *= 1.2; 
+            this.data.oxygenParams.consumptionRate *= 1.5;
+            this.data.glucoseParams.consumptionRate *= 1.5;
+            this.data.oxygenParams.survivalThreshold *= 2.0; 
+            this.data.glucoseParams.survivalThreshold *= 2.0;
         }
     }
     

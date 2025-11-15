@@ -9,8 +9,9 @@ import {
     addAnalysisData, 
     initializeSimulation, 
     expandGrid, 
-    type SimulationState 
 } from '../store/simulationSlice.ts'; 
+// 2. Імпорт ТИПІВ
+import type { SimulationState } from '../store/simulationSlice.ts'; 
 
 import { placeInitialCells, createInitialGrid, createNewCell, expandGridCells } from '../utils/initialization'; 
 import { getRandomInt, checkProbability } from '../utils/random';
@@ -71,11 +72,13 @@ export const runSimulationStep = createAsyncThunk(
                     cellInstance.attemptMutation(checkProbability);
 
                     // --- 1.2. Consumption and Viability Check ---
-                    const consumedO2 = cellData.growthRate * nutrient.oxygen.consumptionRate;
-                    const consumedGlu = cellData.growthRate * nutrient.glucose.consumptionRate;
+                    // ВИКОРИСТОВУЄМО ПАРАМЕТРИ З КЛІТИНИ (cellData.oxygenParams)
+                    const consumedO2 = cellData.growthRate * cellData.oxygenParams.consumptionRate;
+                    const consumedGlu = cellData.growthRate * cellData.glucoseParams.consumptionRate;
 
-                    const hasEnoughO2 = nutrient.oxygen.level >= nutrient.oxygen.threshold;
-                    const hasEnoughGlu = nutrient.glucose.level >= nutrient.glucose.threshold;
+                    // ПЕРЕВІРКА ЖИТТЄЗДАТНОСТІ НА ОСНОВІ ПАРАМЕТРІВ КЛІТИНИ
+                    const hasEnoughO2 = nutrient.oxygen.level >= cellData.oxygenParams.survivalThreshold;
+                    const hasEnoughGlu = nutrient.glucose.level >= cellData.glucoseParams.survivalThreshold;
 
                     nutrient.oxygen.level = Math.max(0, nutrient.oxygen.level - consumedO2);
                     nutrient.glucose.level = Math.max(0, nutrient.glucose.level - consumedGlu);

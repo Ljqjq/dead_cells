@@ -2,7 +2,15 @@
 
 import { getRandomInt, generateId } from './random'; 
 import { CellStateMap, Cell } from '../models/types'; 
-import type { SimulationParams, GridCell, Nutrient, NutrientComponent, SerializedCell, SerializedRootColony } from '../models/types'; 
+import type { 
+    SimulationParams, 
+    GridCell, 
+    Nutrient, 
+    NutrientComponent, 
+    SerializedCell, 
+    SerializedRootColony, 
+    CellNutrientParams // Використовуємо CellNutrientParams
+} from '../models/types'; 
 
 
 /** Початкові/стандартні параметри симуляції */
@@ -19,20 +27,20 @@ export const initialSimulationParams: SimulationParams = {
     initialNutrientLevel: 100,
     nutrientDiffusionRate: 0.15,
     nutrientDecayRate: 0.01,
-    nutrientConsumptionRate: 0.5,
-    nutrientSurvivalThreshold: 5,
     
-    cellSizePx: 10, // НОВЕ: Початковий розмір клітинки
+    // НОВІ: Базові параметри, які клітина успадковує
+    initialCellConsumptionRate: 0.5, 
+    initialCellSurvivalThreshold: 5, 
+
+    cellSizePx: 10,
 };
 
-/** Створює початкові параметри поживних речовин на основі SimulationParams. */
+/** Створює початкові параметри поживних речовин, що залежать від СЕРЕДОВИЩА. */
 function createNutrientParams(params: SimulationParams): Nutrient {
     const base: NutrientComponent = {
         level: params.initialNutrientLevel,
         diffusionRate: params.nutrientDiffusionRate,
         decayRate: params.nutrientDecayRate,
-        consumptionRate: params.nutrientConsumptionRate,
-        threshold: params.nutrientSurvivalThreshold,
     };
     
     return {
@@ -42,7 +50,7 @@ function createNutrientParams(params: SimulationParams): Nutrient {
 }
 
 
-/** Створює початкову сітку GridCell, заповнену нульовими клітинами та початковими поживними речовинами. */
+/** Створює початкову сітку GridCell. */
 export function createInitialGrid(width: number, height: number, params: SimulationParams = initialSimulationParams): GridCell[][] {
     const grid: GridCell[][] = [];
     const initialNutrient = createNutrientParams(params); 
@@ -72,6 +80,13 @@ export function createNewCell(
     params: SimulationParams = initialSimulationParams
 ): SerializedCell { 
     
+    // Базові параметри для поживних речовин клітини, які тепер зберігаються в клітині
+    const baseCellNutrientParams: CellNutrientParams = {
+        consumptionRate: params.initialCellConsumptionRate,
+        survivalThreshold: params.initialCellSurvivalThreshold,
+    };
+    
+    // Створення початкових даних
     let initialData: SerializedCell = {
         x,
         y,
@@ -81,10 +96,20 @@ export function createNewCell(
         age: 0,
         growthRate: params.initialCellGrowthRate,
         mutationProbability: params.initialCellMutationChance,
+        
+        // Ініціалізація нових параметрів
+        oxygenParams: JSON.parse(JSON.stringify(baseCellNutrientParams)),
+        glucoseParams: JSON.parse(JSON.stringify(baseCellNutrientParams)),
     };
     
+    // Якщо ініціалізуємо як мутовану, застосовуємо логіку мутації
     if (isMutated) {
-        initialData.growthRate = params.initialCellGrowthRate * 1.2;
+        // Логіка для мутантів (вищий ріст, споживання, поріг смерті)
+        initialData.growthRate *= 1.2;
+        initialData.oxygenParams.consumptionRate *= 1.5;
+        initialData.glucoseParams.consumptionRate *= 1.5;
+        initialData.oxygenParams.survivalThreshold *= 2.0; 
+        initialData.glucoseParams.survivalThreshold *= 2.0;
     }
     
     const cellInstance = new Cell(initialData);

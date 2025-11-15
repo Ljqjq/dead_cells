@@ -2,7 +2,6 @@
 
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { initialSimulationParams } from '../utils/initialization'; 
-// Імпортуємо SerializedRootColony (однина)
 import type { GridCell, SerializedRootColony, SimulationParams } from '../models/types'; 
 
 // ----------------------------------------------------------------------
@@ -19,17 +18,22 @@ export interface AnalysisData {
 export interface SimulationState {
     params: SimulationParams;
     grid: GridCell[][];
-    // ВИПРАВЛЕНО: Змінено з SerializedRootColonies на SerializedRootColony
-    rootColonies: SerializedRootColony[]; 
+    rootColonies: SerializedRootColony[];
     currentStep: number;
     isRunning: boolean;
     analysisHistory: AnalysisData[];
 }
 
 // Функція для створення початкової порожньої сітки (потрібна лише для початкового стану)
-const createInitialEmptyGrid = (width: number, height: number): GridCell[][] => {
+const createInitialEmptyGrid = (width: number, height: number, initialNutrientLevel: number): GridCell[][] => {
     const grid: GridCell[][] = [];
-    // Для Redux ініціалізація повинна бути швидкою, тому використовуємо мінімальні дані.
+    // Використовуємо лише параметри, що залежать від середовища
+    const initialNutrientComponent = { 
+        level: initialNutrientLevel, 
+        diffusionRate: 0, // У початковому стані використовуємо нульові значення для швидкості
+        decayRate: 0, 
+    };
+    
     for (let y = 0; y < height; y++) {
         const row: GridCell[] = [];
         for (let x = 0; x < width; x++) {
@@ -38,8 +42,8 @@ const createInitialEmptyGrid = (width: number, height: number): GridCell[][] => 
                 y,
                 cell: null,
                 nutrient: {
-                    oxygen: { level: 0, diffusionRate: 0, decayRate: 0, consumptionRate: 0, threshold: 0 },
-                    glucose: { level: 0, diffusionRate: 0, decayRate: 0, consumptionRate: 0, threshold: 0 },
+                    oxygen: JSON.parse(JSON.stringify(initialNutrientComponent)),
+                    glucose: JSON.parse(JSON.stringify(initialNutrientComponent)),
                 },
             });
         }
@@ -51,7 +55,12 @@ const createInitialEmptyGrid = (width: number, height: number): GridCell[][] => 
 
 const initialState: SimulationState = {
     params: initialSimulationParams,
-    grid: createInitialEmptyGrid(initialSimulationParams.gridWidth, initialSimulationParams.gridHeight),
+    // Примітка: використовуємо початкові параметри для створення порожньої сітки
+    grid: createInitialEmptyGrid(
+        initialSimulationParams.gridWidth, 
+        initialSimulationParams.gridHeight, 
+        initialSimulationParams.initialNutrientLevel
+    ),
     rootColonies: [],
     currentStep: 0,
     isRunning: false,
@@ -67,7 +76,6 @@ const simulationSlice = createSlice({
     name: 'simulation',
     initialState,
     reducers: {
-        // Ініціалізація симуляції з початковою сіткою та колоніями
         initializeSimulation: (state, action: PayloadAction<{ grid: GridCell[][], colonies: SerializedRootColony[] }>) => {
             state.grid = action.payload.grid;
             state.rootColonies = action.payload.colonies;
@@ -76,39 +84,38 @@ const simulationSlice = createSlice({
             state.analysisHistory = [];
         },
         
-        // ОНОВЛЕННЯ СІТКИ: Збільшуємо крок після кожного успішного кроку симуляції
         updateGrid: (state, action: PayloadAction<GridCell[][]>) => {
             state.grid = action.payload;
             state.currentStep += 1; 
         },
 
-        // Перемикання стану запуску/паузи
         toggleRunning: (state) => {
             state.isRunning = !state.isRunning;
         },
 
-        // Додавання даних аналізу до історії
         addAnalysisData: (state, action: PayloadAction<AnalysisData>) => {
             state.analysisHistory.push(action.payload);
         },
         
-        // Розширення сітки (викликається, коли щільність занадто висока)
         expandGrid: (state, action: PayloadAction<{ newGrid: GridCell[][], newWidth: number, newHeight: number }>) => {
             state.grid = action.payload.newGrid;
             state.params.gridWidth = action.payload.newWidth;
             state.params.gridHeight = action.payload.newHeight;
         },
 
-        // Оновлення параметрів симуляції (наприклад, з панелі керування)
         setParams: (state, action: PayloadAction<Partial<SimulationParams>>) => {
             state.params = { ...state.params, ...action.payload };
-            // Якщо змінюються розміри або початкова кількість, скидаємо симуляцію
-            if (action.payload.gridWidth || action.payload.gridHeight || action.payload.initialCellCount) {
+            // При зміні ключових параметрів, що впливають на сітку/клітини, скидаємо стан
+            if (action.payload.gridWidth || 
+                action.payload.gridHeight || 
+                action.payload.initialCellCount ||
+                action.payload.initialCellConsumptionRate !== undefined || // НОВЕ
+                action.payload.initialCellSurvivalThreshold !== undefined // НОВЕ
+            ) {
                  state.currentStep = 0;
                  state.isRunning = false;
                  state.rootColonies = [];
                  state.analysisHistory = [];
-                 // Примітка: сама сітка буде переініціалізована в startInitialization
             }
         },
     },
@@ -118,7 +125,6 @@ const simulationSlice = createSlice({
 // 3. EXPORTS
 // ----------------------------------------------------------------------
 
-// Експортуємо всі згенеровані дії (actions)
 export const { 
     updateGrid, 
     initializeSimulation, 
@@ -128,5 +134,4 @@ export const {
     setParams, 
 } = simulationSlice.actions; 
 
-// Експортуємо сам редюсер
 export default simulationSlice.reducer;

@@ -101,7 +101,7 @@ const SimulationPanel: React.FC = () => {
                     className="range-input"
                  />
                  
-                 {/* --- НОВИЙ КОНТРОЛЕР РОЗМІРУ КЛІТИНКИ --- */}
+                 {/* --- ВІЗУАЛІЗАЦІЯ --- */}
                  <h4 style={{ fontWeight: 'bold', marginTop: '15px' }}>🖼️ Візуалізація</h4>
                  
                  <label className="label-text">
@@ -120,6 +120,7 @@ const SimulationPanel: React.FC = () => {
                  {/* --- ПАРАМЕТРИ КЛІТИН --- */}
                  <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>🦠 Клітини</h4>
                  
+                 {/* НОВИЙ КОНТРОЛЕР: ШАНС МУТАЦІЇ */}
                  <label className="label-text">
                     Шанс Мутації (0.0001 - 0.1):
                  </label>
@@ -133,6 +134,7 @@ const SimulationPanel: React.FC = () => {
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
                  
+                 {/* НОВИЙ КОНТРОЛЕР: ШВИДКІСТЬ РОСТУ */}
                  <label className="label-text">
                     Швидкість Росту (0.01 - 1.0):
                  </label>
@@ -145,6 +147,33 @@ const SimulationPanel: React.FC = () => {
                     onChange={(e) => handleParamChange('initialCellGrowthRate', e.target.value)}
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
+                 
+                 {/* НОВИЙ КОНТРОЛЕР: ШВИДКІСТЬ СПОЖИВАННЯ */}
+                 <label className="label-text">
+                    Базове Споживання (Consumption Rate):
+                 </label>
+                 <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    value={params.initialCellConsumptionRate}
+                    onChange={(e) => handleParamChange('initialCellConsumptionRate', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+
+                 {/* НОВИЙ КОНТРОЛЕР: ПОРІГ ВИЖИВАННЯ */}
+                 <label className="label-text">
+                    Базовий Поріг Виживання (Threshold):
+                 </label>
+                 <input
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={params.initialCellSurvivalThreshold}
+                    onChange={(e) => handleParamChange('initialCellSurvivalThreshold', e.target.value)}
+                    style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
+                 />
+
                  
                  {/* --- ПАРАМЕТРИ СЕРЕДОВИЩА --- */}
                  <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>💧 Середовище</h4>
