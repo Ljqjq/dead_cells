@@ -1,4 +1,4 @@
-// src/components/GridVisualizer.tsx
+// src/components/GridVisualizer.tsx (Повна Версія)
 
 import React, { useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -7,7 +7,7 @@ import { CellStateMap } from '../models/types';
 
 // Конфігурація відображення
 const MUTATION_HIGHLIGHT_COLOR = '#8b5cf6'; // Пурпуровий
-const EMPTY_COLOR = '#ffffff'; // Колір порожнього середовища
+const EMPTY_COLOR = '#e5e7eb'; // Цей колір більше не використовується як константа, оскільки фон динамічний
 
 const GridVisualizer: React.FC = () => {
     const { grid, params, currentStep } = useSelector((state: RootState) => state.simulation);
@@ -23,7 +23,10 @@ const GridVisualizer: React.FC = () => {
 
         const width = params.gridWidth;
         const height = params.gridHeight;
-        const cellSize = params.cellSizePx; // ВИКОРИСТОВУЄМО ПАРАМЕТР КОРИСТУВАЧА
+        const cellSize = params.cellSizePx; 
+        
+        // Встановлюємо максимальний рівень, щоб коректно нормувати колір
+        const MAX_NUTRIENT_LEVEL = params.initialNutrientLevel; // Використовуємо початковий рівень як еталон
 
         // Очищення та встановлення розмірів
         canvas.width = width * cellSize;
@@ -35,7 +38,7 @@ const GridVisualizer: React.FC = () => {
                 const gridCell = grid[y][x];
                 const cell = gridCell.cell;
                 
-                let fillColor = EMPTY_COLOR;
+                let fillColor = 'white'; // Колір за замовчуванням
                 let strokeColor = 'transparent';
                 let strokeWidth = 0;
 
@@ -55,8 +58,27 @@ const GridVisualizer: React.FC = () => {
                 } else {
                     // Якщо клітини немає, відображаємо рівень глюкози
                     const nutrientLevel = gridCell.nutrient.glucose.level;
-                    const brightness = Math.min(255, Math.floor(nutrientLevel * 2.5));
-                    fillColor = `rgb(200, 200, ${brightness})`; 
+                    
+                    // Нормалізуємо рівень до діапазону 0-1
+                    const normalizedLevel = Math.min(1, nutrientLevel / MAX_NUTRIENT_LEVEL);
+                    
+                    // Створюємо інвертовану синьо-білу шкалу
+                    // Якщо normalizedLevel = 1 (MAX), компоненти G і R будуть 0.
+                    // Якщо normalizedLevel = 0 (MIN), G і R будуть 255 (білий).
+                    const whiteComponent = Math.round(255 * (1 - normalizedLevel));
+                    const blueComponent = Math.round(255 * normalizedLevel);
+                    
+                    // Ми хочемо, щоб MIN була білою (R=255, G=255, B=255)
+                    // і MAX була синьою (R=0, G=0, B=255)
+                    
+                    // Щоб отримати чистий синій при максимумі:
+                    // Інтенсивність синього (B) - завжди 255.
+                    // Інтенсивність червоного (R) та зеленого (G) - зменшується до 0.
+                    const intensity = Math.round(255 * (1 - normalizedLevel));
+                    
+                    fillColor = `rgb(${intensity}, ${intensity}, 255)`; 
+                    // При MAX_NUTRIENT (рівень 1): intensity = 0. Колір: rgb(0, 0, 255) -> Чистий синій.
+                    // При MIN_NUTRIENT (рівень 0): intensity = 255. Колір: rgb(255, 255, 255) -> Чистий білий.
                 }
 
                 // Малювання заповнення
@@ -71,7 +93,8 @@ const GridVisualizer: React.FC = () => {
                 }
             }
         }
-    }, [grid, params.gridWidth, params.gridHeight, params.cellSizePx]); // Додано залежність від cellSizePx
+    }, [grid, params.gridWidth, params.gridHeight, params.cellSizePx, params.initialNutrientLevel]); 
+    // Додано залежність від initialNutrientLevel, оскільки він використовується для нормалізації
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -83,12 +106,11 @@ const GridVisualizer: React.FC = () => {
                     border: '1px solid #ccc',
                 }}
             >
-                {/* Елемент Canvas */}
                 <canvas ref={canvasRef} /> 
             </div>
             
             <p style={{ marginTop: '10px', fontSize: '12px', color: '#6b7280' }}>
-                *Фон відображає рівень поживних речовин (синій відтінок). Мутовані клітини мають пурпуровий контур.
+                *Фон відображає рівень поживних речовин: **Синій** (MAX) &rarr; **Білий** (MIN).
             </p>
         </div>
     );
