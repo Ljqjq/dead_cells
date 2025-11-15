@@ -1,16 +1,16 @@
-// src/components/SimulationPanel.tsx (ПОВНА ВЕРСІЯ)
+// src/components/SimulationPanel.tsx 
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store/store';
 import { startInitialization, runSimulationStep } from '../services/simulationService';
 import { toggleRunning, setParams } from '../store/simulationSlice';
-import type { SimulationParams } from '../models/types'; // Імпортуємо тип параметрів
+import type { SimulationParams } from '../models/types'; 
 
 const SimulationPanel: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
     const { isRunning, currentStep, params, rootColonies } = useSelector((state: RootState) => state.simulation);
     
-    // Використовуємо локальний стан для швидкості, щоб не викликати dispatch при кожному русі повзунка
     const [speed, setSpeed] = useState(params.simulationSpeedMs); 
 
     const intervalRef = useRef<number | null>(null);
@@ -98,6 +98,22 @@ const SimulationPanel: React.FC = () => {
                     max="1000"
                     value={speed}
                     onChange={handleSpeedChange}
+                    className="range-input"
+                 />
+                 
+                 {/* --- НОВИЙ КОНТРОЛЕР РОЗМІРУ КЛІТИНКИ --- */}
+                 <h4 style={{ fontWeight: 'bold', marginTop: '15px' }}>🖼️ Візуалізація</h4>
+                 
+                 <label className="label-text">
+                    Розмір Клітинки (px): {params.cellSizePx}
+                 </label>
+                 <input
+                    type="range"
+                    min="3" 
+                    max="20"
+                    step="1"
+                    value={params.cellSizePx}
+                    onChange={(e) => handleParamChange('cellSizePx', e.target.value)}
                     className="range-input"
                  />
                  

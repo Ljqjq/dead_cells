@@ -1,5 +1,8 @@
 // src/models/types.ts
 
+// --- 1. CONSTANTS (ЗАМІСТЬ ENUMS) ---
+
+/** Мапа станів клітини */
 export const CellStateMap = {
     HEALTHY: 'HEALTHY',
     MUTATED: 'MUTATED',
@@ -8,6 +11,7 @@ export const CellStateMap = {
 
 // Витягуємо тип стану
 export type CellState = typeof CellStateMap[keyof typeof CellStateMap];
+
 
 // --- 2. INTERFACES for Serialized Data (Redux) ---
 
@@ -32,7 +36,7 @@ export interface SerializedCell {
     y: number;
     rootColonyId: string;
     color: string;
-    state: CellState;
+    state: CellState; 
     age: number;
     growthRate: number;
     mutationProbability: number;
@@ -68,6 +72,9 @@ export interface SimulationParams {
     nutrientDecayRate: number;
     nutrientConsumptionRate: number;
     nutrientSurvivalThreshold: number;
+    
+    // НОВЕ: Розмір клітинки для візуалізації
+    cellSizePx: number; 
 }
 
 // --- 3. CLASS for OOP Logic ---
@@ -77,7 +84,6 @@ export class Cell {
     private data: SerializedCell;
 
     constructor(serializedData: SerializedCell) {
-        // Приймаємо копію даних для внутрішньої роботи
         this.data = { ...serializedData }; 
     }
 

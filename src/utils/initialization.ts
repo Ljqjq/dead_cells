@@ -21,6 +21,8 @@ export const initialSimulationParams: SimulationParams = {
     nutrientDecayRate: 0.01,
     nutrientConsumptionRate: 0.5,
     nutrientSurvivalThreshold: 5,
+    
+    cellSizePx: 10, // НОВЕ: Початковий розмір клітинки
 };
 
 /** Створює початкові параметри поживних речовин на основі SimulationParams. */
@@ -68,9 +70,8 @@ export function createNewCell(
     color: string, 
     isMutated: boolean = false,
     params: SimulationParams = initialSimulationParams
-): SerializedCell { // Повертає SerializedCell
+): SerializedCell { 
     
-    // Створення початкових даних для класу
     let initialData: SerializedCell = {
         x,
         y,
@@ -82,17 +83,12 @@ export function createNewCell(
         mutationProbability: params.initialCellMutationChance,
     };
     
-    const cellInstance = new Cell(initialData);
-
-    // Встановлення мутованих параметрів, якщо потрібно (через внутрішній метод класу)
     if (isMutated) {
-        // Ми не можемо викликати attemptMutation, оскільки це ініціалізація,
-        // тому маніпулюємо даними напряму або створюємо спеціалізований клас/метод.
-        // Для простоти:
         initialData.growthRate = params.initialCellGrowthRate * 1.2;
     }
     
-    return cellInstance.toSerialized(); // Повертаємо серіалізовану форму
+    const cellInstance = new Cell(initialData);
+    return cellInstance.toSerialized(); 
 }
 
 /** Розміщує початкову кількість клітин, створюючи колонії. */

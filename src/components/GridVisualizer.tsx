@@ -1,4 +1,4 @@
-// src/components/GridVisualizer.tsx (Нова версія з Canvas)
+// src/components/GridVisualizer.tsx
 
 import React, { useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -6,9 +6,8 @@ import type { RootState } from '../store/store';
 import { CellStateMap } from '../models/types'; 
 
 // Конфігурація відображення
-const CELL_SIZE_PX = 10;
 const MUTATION_HIGHLIGHT_COLOR = '#8b5cf6'; // Пурпуровий
-const EMPTY_COLOR = '#e5e7eb'; // Колір порожнього середовища
+const EMPTY_COLOR = '#ffffff'; // Колір порожнього середовища
 
 const GridVisualizer: React.FC = () => {
     const { grid, params, currentStep } = useSelector((state: RootState) => state.simulation);
@@ -24,10 +23,11 @@ const GridVisualizer: React.FC = () => {
 
         const width = params.gridWidth;
         const height = params.gridHeight;
+        const cellSize = params.cellSizePx; // ВИКОРИСТОВУЄМО ПАРАМЕТР КОРИСТУВАЧА
 
         // Очищення та встановлення розмірів
-        canvas.width = width * CELL_SIZE_PX;
-        canvas.height = height * CELL_SIZE_PX;
+        canvas.width = width * cellSize;
+        canvas.height = height * cellSize;
 
         // Починаємо малювання
         for (let y = 0; y < height; y++) {
@@ -61,17 +61,17 @@ const GridVisualizer: React.FC = () => {
 
                 // Малювання заповнення
                 ctx.fillStyle = fillColor;
-                ctx.fillRect(x * CELL_SIZE_PX, y * CELL_SIZE_PX, CELL_SIZE_PX, CELL_SIZE_PX);
+                ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize); 
 
                 // Малювання контуру (якщо є)
                 if (strokeWidth > 0) {
                     ctx.strokeStyle = strokeColor;
                     ctx.lineWidth = strokeWidth;
-                    ctx.strokeRect(x * CELL_SIZE_PX, y * CELL_SIZE_PX, CELL_SIZE_PX, CELL_SIZE_PX);
+                    ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize); 
                 }
             }
         }
-    }, [grid, params.gridWidth, params.gridHeight]); // Залежність від сітки та розмірів
+    }, [grid, params.gridWidth, params.gridHeight, params.cellSizePx]); // Додано залежність від cellSizePx
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -88,7 +88,7 @@ const GridVisualizer: React.FC = () => {
             </div>
             
             <p style={{ marginTop: '10px', fontSize: '12px', color: '#6b7280' }}>
-                *Фон відображає рівень поживних речовин (синій відтінок).
+                *Фон відображає рівень поживних речовин (синій відтінок). Мутовані клітини мають пурпуровий контур.
             </p>
         </div>
     );
