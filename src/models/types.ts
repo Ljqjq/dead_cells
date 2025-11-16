@@ -1,5 +1,3 @@
-// src/models/types.ts
-
 export const CellStateMap = {
     HEALTHY: 'HEALTHY',
     MUTATED: 'MUTATED',

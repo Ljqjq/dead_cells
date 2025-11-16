@@ -1,5 +1,3 @@
-// src/services/simulationService.ts
-
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { RootState } from '../store/store';
 import { initializeSimulation, updateGrid, addAnalysisData, expandGrid } from '../store/simulationSlice';

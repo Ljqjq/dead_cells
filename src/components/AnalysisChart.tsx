@@ -1,9 +1,7 @@
-// src/components/AnalysisChart.tsx
-
 import React from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../store/store';
-import type { AnalysisData } from '../store/simulationSlice'; // Імпортуємо тип даних аналізу
+import type { AnalysisData } from '../store/simulationSlice'; 
 
 // --- Конфігурація відображення ---
 const CHART_HEIGHT = 200;

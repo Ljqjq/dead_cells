@@ -1,4 +1,3 @@
-// src/components/GridVisualizer.tsx (Повна Версія)
 
 import React, { useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -62,11 +61,7 @@ const GridVisualizer: React.FC = () => {
                     // Нормалізуємо рівень до діапазону 0-1
                     const normalizedLevel = Math.min(1, nutrientLevel / MAX_NUTRIENT_LEVEL);
                     
-                    // Створюємо інвертовану синьо-білу шкалу
-                    // Якщо normalizedLevel = 1 (MAX), компоненти G і R будуть 0.
-                    // Якщо normalizedLevel = 0 (MIN), G і R будуть 255 (білий).
-                    const whiteComponent = Math.round(255 * (1 - normalizedLevel));
-                    const blueComponent = Math.round(255 * normalizedLevel);
+                   
                     
                     // Ми хочемо, щоб MIN була білою (R=255, G=255, B=255)
                     // і MAX була синьою (R=0, G=0, B=255)
