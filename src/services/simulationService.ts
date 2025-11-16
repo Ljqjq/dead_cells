@@ -57,6 +57,11 @@ export const runSimulationStep = createAsyncThunk(
                     
                     cellInstance.attemptMutation(checkProbability);
 
+                    if (cellInstance.attemptAgeDeath(checkProbability)) {
+                        newGrid[y][x].cell = null; 
+                        continue;
+                    }
+
                     const consumedO2 = cellData.growthRate * cellData.oxygenParams.consumptionRate;
                     const consumedGlu = cellData.growthRate * cellData.glucoseParams.consumptionRate;
 
@@ -163,20 +168,19 @@ function findPhysicalClusters(grid: GridCell[][], width: number, height: number)
             const cellData = grid[y][x].cell;
             
             if (cellData && cellData.state !== CellStateMap.DEAD && !visited[y][x]) {
-                totalClusters++;
-                let isMutatedCluster = false;
                 
+                totalClusters++;
+                
+                const startRootId = cellData.rootColonyId;
+                const startState = cellData.state;
+                
+                const isMutatedCluster = (startState === CellStateMap.MUTATED);
+
                 const queue: { x: number, y: number }[] = [{ x, y }];
                 visited[y][x] = true;
 
                 while (queue.length > 0) {
                     const current = queue.shift()!;
-                    const currentCell = grid[current.y][current.x].cell;
-
-                    if (currentCell && currentCell.state === CellStateMap.MUTATED) {
-                        isMutatedCluster = true;
-                    }
-                    
                     const neighborsPos = getNeighbors(current.x, current.y, width, height);
 
                     for (const pos of neighborsPos) {
@@ -185,8 +189,14 @@ function findPhysicalClusters(grid: GridCell[][], width: number, height: number)
                         const neighborCellData = grid[ny][nx].cell;
 
                         if (neighborCellData && neighborCellData.state !== CellStateMap.DEAD && !visited[ny][nx]) {
-                            visited[ny][nx] = true;
-                            queue.push(pos);
+                            
+                            const sameRoot = neighborCellData.rootColonyId === startRootId;
+                            const sameState = neighborCellData.state === startState;
+                            
+                            if (sameRoot && sameState) {
+                                visited[ny][nx] = true;
+                                queue.push(pos);
+                            }
                         }
                     }
                 }

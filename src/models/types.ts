@@ -1,7 +1,5 @@
 // src/models/types.ts
 
-// --- 1. CONSTANTS ---
-
 export const CellStateMap = {
     HEALTHY: 'HEALTHY',
     MUTATED: 'MUTATED',
@@ -9,28 +7,21 @@ export const CellStateMap = {
 } as const;
 export type CellState = typeof CellStateMap[keyof typeof CellStateMap];
 
-// --- 2. INTERFACES for Serialized Data (Redux) ---
-
-/** Параметри поживних речовин, що залежать від СЕРЕДОВИЩА (ТІЛЬКИ Diffusion) */
 export interface NutrientComponent {
     level: number;
     diffusionRate: number;
-    // decayRate ВИДАЛЕНО
 }
 
-/** Середовище клітини. ТІЛЬКИ OXYGEN ТА GLUCOSE. */
 export interface Nutrient {
     oxygen: NutrientComponent;
     glucose: NutrientComponent;
 }
 
-/** Параметри виживання, специфічні для типу клітини (Consumption, Threshold) */
 export interface CellNutrientParams {
     consumptionRate: number; 
     survivalThreshold: number; 
 }
 
-/** Серіалізована форма Cell */
 export interface SerializedCell {
     x: number;
     y: number;
@@ -45,7 +36,6 @@ export interface SerializedCell {
     glucoseParams: CellNutrientParams;
 }
 
-/** Кожна клітинка сітки */
 export interface GridCell {
     x: number;
     y: number;
@@ -58,34 +48,27 @@ export interface SerializedRootColony {
     color: string;
 }
 
-/** Параметри симуляції */
 export interface SimulationParams {
     gridWidth: number;
     gridHeight: number;
     simulationSpeedMs: number;
-    maxDensityThreshold: number; 
+    maxDensityThreshold: number;
     initialCellCount: number;
 
     initialCellGrowthRate: number; 
     initialCellMutationChance: number;
     
-    // --- ПАРАМЕТРИ КИСНЮ (OXYGEN) ---
     initialOxygenLevel: number;
     oxygenDiffusionRate: number;
-    // oxygenDecayRate ВИДАЛЕНО
     
-    // --- ПАРАМЕТРИ ГЛЮКОЗИ (GLUCOSE) ---
     initialGlucoseLevel: number;
     glucoseDiffusionRate: number;
-    // glucoseDecayRate ВИДАЛЕНО
     
     initialCellConsumptionRate: number; 
     initialCellSurvivalThreshold: number; 
 
     cellSizePx: number; 
 }
-
-// --- 3. CLASS for OOP Logic ---
 
 export class Cell {
     private data: SerializedCell;
@@ -108,6 +91,25 @@ export class Cell {
     
     public ageCell(): void {
         this.data.age++;
+    }
+    
+    public attemptAgeDeath(checkProbability: (prob: number) => boolean): boolean {
+        const BASE_LIFESPAN = 100; 
+        const AGE_START_DEATH = 50; 
+
+        if (this.data.age < AGE_START_DEATH) {
+            return false; 
+        }
+
+        const ageFactor = (this.data.age - AGE_START_DEATH) / BASE_LIFESPAN;
+        
+        const deathChance = Math.min(1.0, ageFactor); 
+        
+        if (checkProbability(deathChance)) {
+            this.data.state = CellStateMap.DEAD;
+            return true;
+        }
+        return false;
     }
     
     public checkViability(hasEnoughO2: boolean, hasEnoughGlu: boolean): boolean {
