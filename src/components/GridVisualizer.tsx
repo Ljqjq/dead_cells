@@ -26,7 +26,7 @@ const GridVisualizer: React.FC = () => {
         const cellSize = params.cellSizePx; 
         
         // Встановлюємо максимальний рівень, щоб коректно нормувати колір
-        const MAX_NUTRIENT_LEVEL = 100; // Використовуємо початковий рівень як еталон
+        const MAX_NUTRIENT_LEVEL = 100; 
 
         // Очищення та встановлення розмірів
         canvas.width = width * cellSize;
@@ -94,8 +94,7 @@ const GridVisualizer: React.FC = () => {
             }
         }
     }, [grid, params.gridWidth, params.gridHeight, params.cellSizePx]); 
-    // Додано залежність від initialNutrientLevel, оскільки він використовується для нормалізації
-
+   
     return (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '8px' }}>Крок симуляції: {currentStep}</h3>

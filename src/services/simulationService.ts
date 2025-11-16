@@ -4,10 +4,10 @@ import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { RootState } from '../store/store';
 import { initializeSimulation, updateGrid, addAnalysisData, expandGrid } from '../store/simulationSlice';
 import { 
+    expandGridCells, 
     createInitialGrid, 
-    placeInitialCells, 
-    createNewCell, 
-    expandGridCells // ВИКОРИСТОВУЄТЬСЯ ДЛЯ РОЗШИРЕННЯ
+    placeInitialCells,
+    createNewCell 
 } from '../utils/initialization';
 import { 
     Cell, 
@@ -19,12 +19,6 @@ import {
 import { getRandomInt } from '../utils/random';
 
 
-// ----------------------------------------------------------------------
-// A. ASYNC THUNKS
-// ----------------------------------------------------------------------
-
-/** * Ініціалізує сітку та колонії. 
- */
 export const startInitialization = createAsyncThunk(
     'simulation/startInitialization',
     async (_, { getState, dispatch }) => {
@@ -37,8 +31,6 @@ export const startInitialization = createAsyncThunk(
     }
 );
 
-/** * Виконує один крок симуляції (споживання, ріст/поділ, дифузія).
- */
 export const runSimulationStep = createAsyncThunk(
     'simulation/runSimulationStep',
     async (_, { getState, dispatch }) => {
@@ -51,8 +43,8 @@ export const runSimulationStep = createAsyncThunk(
         
         let healthyCount = 0;
         let mutatedCount = 0;
+        let totalCells = 0; 
 
-        // 1. STAGE: GROWTH, MUTATION, CONSUMPTION, AND DEATH
         for (let y = 0; y < params.gridHeight; y++) {
             for (let x = 0; x < params.gridWidth; x++) {
                 const gridCell = newGrid[y][x];
@@ -63,11 +55,8 @@ export const runSimulationStep = createAsyncThunk(
                     const nutrient = gridCell.nutrient;
                     const cellData = cellInstance.dataSnapshot; 
                     
-                    // --- 1.1. Mutation ---
                     cellInstance.attemptMutation(checkProbability);
 
-                    // --- 1.2. Consumption and Viability Check ---
-                    
                     const consumedO2 = cellData.growthRate * cellData.oxygenParams.consumptionRate;
                     const consumedGlu = cellData.growthRate * cellData.glucoseParams.consumptionRate;
 
@@ -82,59 +71,55 @@ export const runSimulationStep = createAsyncThunk(
                         continue; 
                     }
                     
-                    // --- 1.3. Growth and Division ---
                     if (checkProbability(cellData.growthRate)) {
                         attemptDivision(newGrid, x, y, cellInstance.dataSnapshot, params);
                     }
                     
-                    // --- 1.4. Age ---
                     cellInstance.ageCell();
 
-                    // --- 1.5. Metrics ---
                     if (cellData.state === CellStateMap.MUTATED) {
                         mutatedCount++;
                     } else {
                         healthyCount++;
                     }
+                    totalCells++;
                     
                     newGrid[y][x].cell = cellInstance.toSerialized(); 
                 }
             }
         }
         
-        // 2. STAGE: DIFFUSION 
         newGrid = runDiffusionStep(newGrid, params.gridWidth, params.gridHeight);
         
-        // **Етап Decay (Розпаду) ВИДАЛЕНО**
+        const { 
+            totalClusters, 
+            healthyClusters, 
+            mutatedClusters 
+        } = findPhysicalClusters(newGrid, params.gridWidth, params.gridHeight); 
         
-        // 3. STAGE: EXPANSION CHECK (РОЗШИРЕННЯ ВІДНОВЛЕНО)
-        const totalCells = healthyCount + mutatedCount;
         const maxCells = params.gridWidth * params.gridHeight;
         
-        if (totalCells / maxCells > params.maxDensityThreshold) {
+        if (totalCells > 0 && totalCells / maxCells > params.maxDensityThreshold) {
              const { newGrid: expandedGrid, newWidth, newHeight } = expandGridCells(newGrid, 2, params);
              
              dispatch(expandGrid({ newGrid: expandedGrid, newWidth, newHeight }));
-             
-             // Зупиняємо поточний крок, очікуючи на наступний крок з новою сіткою
              return; 
         }
 
-        // 4. DISPATCH UPDATES
         dispatch(updateGrid(newGrid));
         dispatch(addAnalysisData({
             step: state.simulation.currentStep + 1,
             healthy: healthyCount,
             mutated: mutatedCount,
             total: totalCells,
+            
+            totalClusters: totalClusters,
+            healthyClusters: healthyClusters,
+            mutatedClusters: mutatedClusters,
         }));
     }
 );
 
-
-// ----------------------------------------------------------------------
-// B. DIVISION LOGIC
-// ----------------------------------------------------------------------
 
 function attemptDivision(grid: GridCell[][], x: number, y: number, parentCell: SerializedCell, params: SimulationParams): boolean {
     const { gridWidth, gridHeight } = params;
@@ -163,9 +148,60 @@ function attemptDivision(grid: GridCell[][], x: number, y: number, parentCell: S
 }
 
 
-// ----------------------------------------------------------------------
-// C. HELPER FUNCTIONS 
-// ----------------------------------------------------------------------
+function findPhysicalClusters(grid: GridCell[][], width: number, height: number): { 
+    totalClusters: number, 
+    healthyClusters: number, 
+    mutatedClusters: number 
+} {
+    const visited: boolean[][] = Array(height).fill(0).map(() => Array(width).fill(false));
+    let totalClusters = 0;
+    let healthyClusters = 0;
+    let mutatedClusters = 0;
+
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const cellData = grid[y][x].cell;
+            
+            if (cellData && cellData.state !== CellStateMap.DEAD && !visited[y][x]) {
+                totalClusters++;
+                let isMutatedCluster = false;
+                
+                const queue: { x: number, y: number }[] = [{ x, y }];
+                visited[y][x] = true;
+
+                while (queue.length > 0) {
+                    const current = queue.shift()!;
+                    const currentCell = grid[current.y][current.x].cell;
+
+                    if (currentCell && currentCell.state === CellStateMap.MUTATED) {
+                        isMutatedCluster = true;
+                    }
+                    
+                    const neighborsPos = getNeighbors(current.x, current.y, width, height);
+
+                    for (const pos of neighborsPos) {
+                        const nx = pos.x;
+                        const ny = pos.y;
+                        const neighborCellData = grid[ny][nx].cell;
+
+                        if (neighborCellData && neighborCellData.state !== CellStateMap.DEAD && !visited[ny][nx]) {
+                            visited[ny][nx] = true;
+                            queue.push(pos);
+                        }
+                    }
+                }
+                
+                if (isMutatedCluster) {
+                    mutatedClusters++;
+                } else {
+                    healthyClusters++;
+                }
+            }
+        }
+    }
+    
+    return { totalClusters, healthyClusters, mutatedClusters };
+}
 
 function runDiffusionStep(grid: GridCell[][], width: number, height: number): GridCell[][] {
     const newGrid = JSON.parse(JSON.stringify(grid));

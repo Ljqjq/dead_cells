@@ -9,13 +9,13 @@ import type { SimulationParams } from '../models/types';
 
 const SimulationPanel: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    const { isRunning, currentStep, params, rootColonies } = useSelector((state: RootState) => state.simulation);
+    const { isRunning, currentStep, params, rootColonies, analysisHistory } = useSelector((state: RootState) => state.simulation);
     
-    const [speed, setSpeed] = useState(params.simulationSpeedMs); 
+    const [displaySpeed, setDisplaySpeed] = useState(1000 / params.simulationSpeedMs); 
 
     const intervalRef = useRef<number | null>(null);
+    const latestAnalysis = analysisHistory[analysisHistory.length - 1];
 
-    // --- Логіка Таймера ---
     useEffect(() => {
         if (isRunning) {
             const runStep = () => {
@@ -46,12 +46,17 @@ const SimulationPanel: React.FC = () => {
     };
     
     const handleSpeedChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const newSpeed = parseInt(event.target.value, 10);
-        setSpeed(newSpeed); 
-        dispatch(setParams({ simulationSpeedMs: newSpeed }));
+        const speedValue = parseInt(event.target.value, 10);
+        setDisplaySpeed(speedValue); 
+        
+        const maxDelay = 1000;
+        const minDelay = 10;
+        
+        const delay = maxDelay - ((speedValue - 1) / 99) * (maxDelay - minDelay);
+        
+        dispatch(setParams({ simulationSpeedMs: Math.round(delay) }));
     };
 
-    // Обробник змін числових параметрів
     const handleParamChange = (key: keyof SimulationParams, value: string) => {
         const numValue = parseFloat(value);
         if (!isNaN(numValue)) {
@@ -86,24 +91,39 @@ const SimulationPanel: React.FC = () => {
                 Поточний Крок: **{currentStep}**
             </div>
 
+            {latestAnalysis && (
+                <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #ccc', borderRadius: '4px' }}>
+                    <h4 style={{ fontWeight: 'bold' }}>📊 Аналіз Кластерів (BFS)</h4>
+                    <p>
+                        Всього Клітин: **{latestAnalysis.total}**
+                    </p>
+                    <p>
+                        Фізичних Кластерів: **{latestAnalysis.totalClusters}**
+                    </p>
+                    <ul>
+                        <li>Здорові: <strong style={{ color: '#22c55e' }}>{latestAnalysis.healthyClusters}</strong></li>
+                        <li>Мутовані: <strong style={{ color: '#ef4444' }}>{latestAnalysis.mutatedClusters}</strong></li>
+                    </ul>
+                </div>
+            )}
+            
             ---
             
             <div className="panel-setting-group">
                  <h3 className="panel-setting-title">⚙️ Налаштування</h3>
                  
                  <label className="label-text">
-                    Швидкість (кроків/мс): {speed}
+                    Швидкість (1 - 100): {Math.round(displaySpeed)}
                  </label>
                  <input
                     type="range"
-                    min="10"
-                    max="1000"
-                    value={speed}
+                    min="1"
+                    max="100"
+                    value={displaySpeed}
                     onChange={handleSpeedChange}
                     className="range-input"
                  />
                  
-                 {/* --- ВІЗУАЛІЗАЦІЯ --- */}
                  <h4 style={{ fontWeight: 'bold', marginTop: '15px' }}>🖼️ Візуалізація</h4>
                  
                  <label className="label-text">
@@ -119,7 +139,6 @@ const SimulationPanel: React.FC = () => {
                     className="range-input"
                  />
                  
-                 {/* --- ПАРАМЕТРИ КЛІТИН --- */}
                  <h4 style={{ fontWeight: 'bold', marginTop: '10px' }}>🦠 Клітини (Базові)</h4>
                  
                  <label className="label-text">
@@ -173,8 +192,6 @@ const SimulationPanel: React.FC = () => {
                  />
 
                  
-                 {/* --- ПАРАМЕТРИ СЕРЕДОВИЩА: КИСЕНЬ ТА ГЛЮКОЗА --- */}
-                 
                  <h4 style={{ fontWeight: 'bold', marginTop: '15px', color: '#3b82f6' }}>🌬️ Середовище: Кисень ($O_2$)</h4>
                  
                  <label className="label-text">
@@ -202,8 +219,6 @@ const SimulationPanel: React.FC = () => {
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
                  
-                 {/* Decay Rate для O2 ВИДАЛЕНО */}
-
 
                  <h4 style={{ fontWeight: 'bold', marginTop: '10px', color: '#22c55e' }}>🍚 Середовище: Глюкоза (Glucose)</h4>
                  
@@ -231,8 +246,6 @@ const SimulationPanel: React.FC = () => {
                     onChange={(e) => handleParamChange('glucoseDiffusionRate', e.target.value)}
                     style={{ border: '1px solid #ccc', padding: '4px', width: '100%' }}
                  />
-                 
-                 {/* Decay Rate для Glucose ВИДАЛЕНО */}
 
             </div>
         </div>
