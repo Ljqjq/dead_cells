@@ -1,3 +1,5 @@
+// src/services/simulationService.ts
+
 import { createAsyncThunk } from '@reduxjs/toolkit';
 import type { RootState } from '../store/store';
 import { initializeSimulation, updateGrid, addAnalysisData, expandGrid } from '../store/simulationSlice';
@@ -17,15 +19,91 @@ import {
 import { getRandomInt } from '../utils/random';
 
 
+/**
+ * Перевіряє ключові параметри симуляції на допустимі діапазони.
+ * Кидає виняток, якщо параметри некоректні.
+ */
+function validateSimulationParams(params: SimulationParams): void {
+   const errorMessages: string[] = [];
+
+    // 1. Розміри сітки та швидкість
+    if (params.gridWidth <= 0 || params.gridHeight <= 0) {
+        errorMessages.push("Grid dimensions must be positive integers.");
+    }
+    if (params.simulationSpeedMs <= 0) {
+        errorMessages.push("Simulation speed must be greater than 0 ms.");
+    }
+    
+    // 2. Параметри Дифузії та Щільності (Мають бути [0.0, 1.0])
+    if (params.oxygenDiffusionRate < 0 || params.oxygenDiffusionRate > 1.0) {
+        errorMessages.push("Diffusion Rate for Oxygen must be between 0.0 and 1.0.");
+    }
+    if (params.glucoseDiffusionRate < 0 || params.glucoseDiffusionRate > 1.0) {
+        errorMessages.push("Diffusion Rate for Glucose must be between 0.0 and 1.0.");
+    }
+    if (params.maxDensityThreshold <= 0 || params.maxDensityThreshold > 1.0) {
+        errorMessages.push("Max Density Threshold must be between 0.0 and 1.0.");
+    }
+    
+    // 3. Початкові Клітинні Параметри (Мають бути позитивними)
+    if (params.initialCellGrowthRate <= 0) {
+        errorMessages.push("Initial Cell Growth Rate must be positive.");
+    }
+    if (params.initialCellMutationChance < 0 || params.initialCellMutationChance > 1.0) {
+        errorMessages.push("Initial Mutation Chance must be between 0.0 and 1.0.");
+    }
+    
+    // 4. Параметри Поживних Речовин (Мають бути позитивними або 0)
+    if (params.initialOxygenLevel < 0 || params.initialGlucoseLevel < 0) {
+        errorMessages.push("Initial Nutrient levels must be non-negative.");
+    }
+
+    // 5. Пороги Виживання та Споживання (Мають бути позитивними)
+    if (params.initialCellConsumptionRate <= 0) {
+         errorMessages.push("Initial Consumption Rate must be positive.");
+    }
+    if (params.initialCellSurvivalThreshold < 0) {
+        errorMessages.push("Initial Survival Threshold must be non-negative.");
+    }
+    
+    // 6. Початкові Умови Розміщення
+    const maxCells = params.gridWidth * params.gridHeight;
+    if (params.initialCellCount <= 0 || params.initialCellCount > maxCells) {
+        errorMessages.push(`Initial cell count must be between 1 and ${maxCells}.`);
+    }
+
+    if (errorMessages.length > 0) {
+        // Об'єднання всіх помилок в один виняток
+        const fullErrorMessage = "InvalidParameterException: " + errorMessages.join(" | ");
+        throw new Error(fullErrorMessage);
+    }
+}
+
+
 export const startInitialization = createAsyncThunk(
     'simulation/startInitialization',
     async (_, { getState, dispatch }) => {
-        const params: SimulationParams = (getState() as RootState).simulation.params;
+        const state = getState() as RootState;
+        const params = state.simulation.params;
         
-        let grid = createInitialGrid(params.gridWidth, params.gridHeight, params);
-        const { grid: initializedGrid, colonies } = placeInitialCells(grid, params);
-        
-        dispatch(initializeSimulation({ grid: initializedGrid, colonies }));
+        try {
+            // Крок 1: Перевірка вхідних даних
+            validateSimulationParams(params); 
+            
+            // Крок 2: Ініціалізація, якщо дані коректні
+            let grid = createInitialGrid(params.gridWidth, params.gridHeight, params);
+            const { grid: initializedGrid, colonies } = placeInitialCells(grid, params);
+            
+            dispatch(initializeSimulation({ grid: initializedGrid, colonies }));
+            
+        } catch (error) {
+            // Обробка винятку: зупинка ініціалізації та виведення помилки
+            const errorMessage = error instanceof Error ? error.message : "An unknown error occurred during initialization.";
+            alert("Simulation initialization failed:" + errorMessage);
+            
+            // Тут можна додати dispatch для відображення помилки користувачеві в інтерфейсі (наприклад, Redux action setError)
+            throw new Error(errorMessage);
+        }
     }
 );
 
