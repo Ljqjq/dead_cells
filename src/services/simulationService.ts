@@ -340,3 +340,55 @@ function getNeighbors(x: number, y: number, width: number, height: number): { x:
     }
     return neighbors;
 }
+
+function generateUniqueId() {
+    const uniqueId = Math.floor(Math.random() * 1000);
+    
+    return uniqueId.toString();
+}
+
+function generateRandomColor() {
+    let randomColor = "#";
+    const colorsChars = "0123456789ABCDEF";
+
+    for (let i =0; i < 6; i++) {
+        const randomIndex = Math.floor(Math.random() * colorsChars.length);
+
+        randomColor += colorsChars[randomIndex];
+
+    }
+
+    return randomColor;
+}
+
+export const placeNewColony = createAsyncThunk(
+    'simulation/placeNewColony',
+    async ({ x, y }: { x: number, y: number }, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        const params = state.simulation.params;
+        const currentGrid = JSON.parse(JSON.stringify(state.simulation.grid));
+
+        if (currentGrid[y][x].cell !== null) {
+            // Комірка вже зайнята
+            throw new Error("Cell already exists at this location.");
+        }
+
+        // 1. Створення унікального ID та кольору
+        const newColonyId = generateUniqueId(); // Потрібна нова утиліта
+        const newColor = generateRandomColor(); // Потрібна нова утиліта
+
+        // 2. Створення нового об'єкта клітини
+        const newCellData = createNewCell(
+            x, y, newColonyId, newColor, 
+            false, // Не мутована за замовчуванням
+            params
+        );
+
+        // 3. Оновлення сітки
+        currentGrid[y][x].cell = newCellData;
+
+        // 4. Оновлення стану
+        dispatch(updateGrid(currentGrid));
+        // Потрібно також оновити список колоній, якщо ви його відстежуєте окремо
+    }
+);
