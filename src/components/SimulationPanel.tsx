@@ -158,7 +158,15 @@ const SimulationPanel: React.FC = () => {
         <div style={{ padding: '16px', display: 'flex', gap: '30px', minHeight: '80vh' }}>
             
             {/* 1. ЛІВА ПАНЕЛЬ: ВАШІ СТАРІ КЕРУВАННЯ ТА НАЛАШТУВАННЯ */}
-            <div style={{ width: '300px', flexShrink: 0, backgroundColor: '#f9fafb', borderRadius: '8px', padding: '16px' }}>
+            <div style={{ 
+                width: '350px', // <<< ЗБІЛЬШЕНА ШИРИНА 
+                flexShrink: 0, 
+                backgroundColor: '#f9fafb', 
+                borderRadius: '8px', 
+                padding: '16px',
+                overflowY: 'auto', // <<< ДОДАНО СКРОЛІНГ
+                maxHeight: '80vh' // Обмежуємо висоту для скролінгу
+            }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Керування Симуляцією</h2>
                 
                 {/* Кнопки Керування */}
@@ -308,13 +316,13 @@ const SimulationPanel: React.FC = () => {
                     {renderGrid()}
 
                     {/* Інтерактивний Майданчик (Тільки якщо відкрито) */}
-                    {isPlaygroundOpen && (
+                    {isPlaygroundOpen ? (
                         <InteractivePlayground 
                             onClickCoords={lastClickCoords}
                             gridWidth={params.gridWidth}
                             gridHeight={params.gridHeight}
                         />
-                    )}
+                    ): console.log(isPlaygroundOpen)}
                 </div>
             </div>
         </div>

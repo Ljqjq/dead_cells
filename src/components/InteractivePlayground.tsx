@@ -2,15 +2,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { type RootState } from '../store/store';
 import { placeNewColony, removeCellAt, setNutrientLevel } from '../services/simulationService';
-import { type Nutrient } from '../models/types'; // Припускаємо імпорт інтерфейсу Nutrient
+import { type Nutrient } from '../models/types'; 
 
 // --- Типи для внутрішнього стану ---
 type InteractionMode = 'VIEW' | 'ADD_CELL' | 'DELETE_CELL' | 'EDIT_NUTRIENT';
-// Використовуємо keyof Nutrient, як ви просили, для типобезпеки
 type NutrientType = keyof Nutrient; 
 
 interface InteractivePlaygroundProps {
-    // Координати останнього кліку, передані з батьківського компонента (SimulationPanel)
     onClickCoords: { x: number, y: number } | null;
     gridWidth: number;
     gridHeight: number;
@@ -20,17 +18,13 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
     const dispatch = useDispatch();
     const grid = useSelector((state: RootState) => state.simulation.grid);
 
-    // Локальний стан: керує обраним режимом
     const [mode, setMode] = useState<InteractionMode>('VIEW');
-    
-    // Координати комірки, відкритої для редагування (використовується для форми ресурсів)
     const [selectedCellCoords, setSelectedCellCoords] = useState<{ x: number, y: number } | null>(null);
 
-    // Локальний стан для значень у формі редагування ресурсів
     const [o2Input, setO2Input] = useState(0);
     const [glucoseInput, setGlucoseInput] = useState(0);
 
-    // --- Обробка Кліку (Реагує на зміни onClickCoords з батьківського компонента) ---
+    // --- Обробка Кліку ---
     useEffect(() => {
         if (!onClickCoords) return;
 
@@ -44,11 +38,9 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
         try {
             switch (mode) {
                 case 'ADD_CELL':
-                    // Додати Клітину
                     dispatch(placeNewColony({ x, y }) as any);
                     break;
                 case 'DELETE_CELL':
-                    // Видалити Клітину
                     dispatch(removeCellAt({ x, y }) as any);
                     break;
                 case 'EDIT_NUTRIENT':
@@ -63,44 +55,35 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
                     break;
                 case 'VIEW':
                 default:
-                    // Просто перегляд
                     break;
             }
         } catch (error) {
             console.error("Interaction failed:", error);
-            // Тут можна відобразити помилку
         }
 
-    // Включаємо grid у залежності, щоб оновлювати локальні стани при зміні сітки
     }, [onClickCoords, mode, dispatch, grid]); 
 
     
-    // --- Логіка Редагування Ресурсів (ВБУДОВАНА) ---
-
+    // --- Логіка Редагування Ресурсів ---
     const handleSaveNutrients = () => {
         if (!selectedCellCoords) return;
         const { x, y } = selectedCellCoords;
 
-        // 1. Валідація: значення не може бути від'ємним
         if (o2Input < 0 || glucoseInput < 0) {
             alert('Рівень поживних речовин не може бути від’ємним.');
             return;
         }
         
-        // Отримуємо поточні значення для перевірки, чи дійсно щось змінилося
         const currentData = grid[y][x]?.nutrient;
         
-        // 2. Виклик Thunk для оновлення O2
         if (currentData && o2Input !== currentData.oxygen.level) {
             dispatch(setNutrientLevel({ x, y, type: 'oxygen' as NutrientType, value: o2Input }) as any);
         }
         
-        // 3. Виклик Thunk для оновлення Глюкози
         if (currentData && glucoseInput !== currentData.glucose.level) {
             dispatch(setNutrientLevel({ x, y, type: 'glucose' as NutrientType, value: glucoseInput }) as any);
         }
         
-        // Закриваємо форму після збереження
         setSelectedCellCoords(null); 
     };
 
@@ -111,17 +94,22 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
     const getModeStyle = (m: InteractionMode) => ({
         backgroundColor: mode === m ? '#e0f7fa' : '#ffffff',
         border: '1px solid #00bcd4',
-        marginRight: '5px',
-        padding: '5px 10px',
-        cursor: 'pointer'
+        padding: '8px 10px',
+        cursor: 'pointer',
+        textAlign: 'left' as const, // Для кращого вигляду
     });
 
     return (
-        <div style={{ padding: '15px', border: '1px solid #00bcd4', backgroundColor: '#f5f5f5', borderRadius: '5px', height: 'fit-content' }}>
+        <div style={{ padding: '15px', border: '1px solid #00bcd4', backgroundColor: '#f5f5f5', borderRadius: '5px', height: 'fit-content', minWidth: '220px' }}>
             <h3>🛠️ Панель Інтерактивності</h3>
             
-            {/* Керування Режимами */}
-            <div style={{ display: 'flex', marginBottom: '15px' }}>
+            {/* Керування Режимами (ЗМІНА: тепер вертикально) */}
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: 'column', // <<< ОСНОВНА ЗМІНА
+                gap: '5px', // Проміжок між вертикальними кнопками
+                marginBottom: '15px' 
+            }}>
                 <button style={getModeStyle('VIEW')} onClick={() => setMode('VIEW')}>
                     👁 Перегляд
                 </button>
