@@ -18,6 +18,7 @@ import {
 } from '../models/types';
 import { getRandomInt } from '../utils/random';
 
+import { type Nutrient } from '../models/types'; 
 
 /**
  * Перевіряє ключові параметри симуляції на допустимі діапазони.
@@ -390,5 +391,77 @@ export const placeNewColony = createAsyncThunk(
         // 4. Оновлення стану
         dispatch(updateGrid(currentGrid));
         // Потрібно також оновити список колоній, якщо ви його відстежуєте окремо
+    }
+);
+
+export const removeCellAt = createAsyncThunk(
+    'simulation/removeCellAt',
+    async ({ x, y }: { x: number, y: number }, { getState, dispatch }) => {
+        const state = getState() as RootState;
+        
+        // Крок 1: Перевірка на межі сітки
+        const { gridWidth, gridHeight } = state.simulation.params;
+        if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) {
+             throw new Error("InvalidLocationException: Coordinates are outside grid boundaries.");
+        }
+        
+        const currentGrid = JSON.parse(JSON.stringify(state.simulation.grid));
+        
+        if (currentGrid[y][x].cell === null) {
+            // Комірка вже порожня, нічого не робимо
+            return;
+        }
+        
+        try {
+            // Крок 2: Видалення клітини
+            currentGrid[y][x].cell = null;
+            
+            // Крок 3: Оновлення сітки
+            dispatch(updateGrid(currentGrid));
+            
+            // *Примітка: Тут можна додати логіку для оновлення лічильників клітин*
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Failed to remove cell due to unknown error.";
+            console.error("Remove Cell Failed:", errorMessage);
+            throw new Error(errorMessage);
+        }
+    }
+);
+
+type NutrientType = keyof Nutrient;
+
+export const setNutrientLevel = createAsyncThunk(
+    'simulation/setNutrientLevel',
+    async ({ x, y, type, value }: { x: number, y: number, type: NutrientType, value: number }, { getState, dispatch }) => {
+        
+        if (value < 0) {
+            throw new Error("InvalidParameterException: Nutrient level cannot be negative.");
+        }
+        
+        const state = getState() as RootState;
+        
+        const { gridWidth, gridHeight } = state.simulation.params;
+        if (x < 0 || x >= gridWidth || y < 0 || y >= gridHeight) {
+             throw new Error("InvalidLocationException: Coordinates are outside grid boundaries.");
+        }
+
+        const currentGrid = JSON.parse(JSON.stringify(state.simulation.grid));
+        
+        try {
+            // Тепер ми можемо використовувати індексацію об'єкта завдяки типу keyof Nutrient:
+            // currentGrid[y][x].nutrient[type] звертається або до .oxygen, або до .glucose
+            
+            // Оскільки .oxygen та .glucose є об'єктами NutrientComponent, ми повинні звернутися до їхнього поля .level
+            currentGrid[y][x].nutrient[type].level = value; 
+
+            // Оновлення сітки
+            dispatch(updateGrid(currentGrid));
+
+        } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : "Failed to set nutrient level due to unknown error.";
+            console.error("Set Nutrient Level Failed:", errorMessage);
+            throw new Error(errorMessage);
+        }
     }
 );
