@@ -18,6 +18,7 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
     const dispatch = useDispatch();
     const grid = useSelector((state: RootState) => state.simulation.grid);
 
+    // --- ЛОКАЛЬНІ СТАНИ ---
     const [mode, setMode] = useState<InteractionMode>('VIEW');
     const [selectedCellCoords, setSelectedCellCoords] = useState<{ x: number, y: number } | null>(null);
 
@@ -30,7 +31,6 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
 
         const { x, y } = onClickCoords;
         
-        // 1. Скидаємо selectedCellCoords, якщо не в режимі редагування
         if (mode !== 'EDIT_NUTRIENT') {
             setSelectedCellCoords(null); 
         }
@@ -44,10 +44,8 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
                     dispatch(removeCellAt({ x, y }) as any);
                     break;
                 case 'EDIT_NUTRIENT':
-                    // Встановлюємо координати для відображення форми
                     setSelectedCellCoords({ x, y });
                     
-                    // Ініціалізуємо поля форми поточними значеннями
                     if (grid[y] && grid[y][x]?.nutrient) {
                         setO2Input(grid[y][x].nutrient.oxygen.level);
                         setGlucoseInput(grid[y][x].nutrient.glucose.level);
@@ -93,21 +91,34 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
 
     const getModeStyle = (m: InteractionMode) => ({
         backgroundColor: mode === m ? '#e0f7fa' : '#ffffff',
+        color: mode === m ? '#007985' : '#00bcd4',
+        fontWeight: mode === m ? 'bold' : 'normal',
         border: '1px solid #00bcd4',
         padding: '8px 10px',
         cursor: 'pointer',
-        textAlign: 'left' as const, // Для кращого вигляду
+        textAlign: 'left' as const, 
+        width: '100%', 
+        borderRadius: '3px',
+        transition: 'background-color 0.2s',
     });
 
     return (
-        <div style={{ padding: '15px', border: '1px solid #00bcd4', backgroundColor: '#f5f5f5', borderRadius: '5px', height: 'fit-content', minWidth: '220px' }}>
-            <h3>🛠️ Панель Інтерактивності</h3>
+        <div style={{ 
+            padding: '15px', 
+            border: '1px solid #00bcd4', 
+            backgroundColor: '#f5f5f5', 
+            borderRadius: '5px', 
+            height: 'fit-content', 
+            minWidth: '220px',
+            minHeight: '300px' 
+        }}>
+            <h3 style={{ marginBottom: '15px' }}>🛠️ Панель Інтерактивності</h3>
             
-            {/* Керування Режимами (ЗМІНА: тепер вертикально) */}
+            {/* Керування Режимами (Вертикальний список) */}
             <div style={{ 
                 display: 'flex', 
-                flexDirection: 'column', // <<< ОСНОВНА ЗМІНА
-                gap: '5px', // Проміжок між вертикальними кнопками
+                flexDirection: 'column', 
+                gap: '8px', 
                 marginBottom: '15px' 
             }}>
                 <button style={getModeStyle('VIEW')} onClick={() => setMode('VIEW')}>
@@ -130,7 +141,7 @@ const InteractivePlayground: React.FC<InteractivePlaygroundProps> = ({ onClickCo
             {mode === 'EDIT_NUTRIENT' && selectedCellCoords && (
                 <div style={{ marginTop: '20px', padding: '15px', border: '1px solid #ccc', backgroundColor: '#ffffff' }}>
                     <h4>🧪 Редагування ресурсів</h4>
-                    <p>Координати: ({selectedCellCoords.x}, {selectedCellCoords.y})</p>
+                    <p style={{ fontSize: '0.9em' }}>Координати: ({selectedCellCoords.x}, {selectedCellCoords.y})</p>
                     
                     <div style={{ marginBottom: '10px' }}>
                         <label style={{ display: 'block' }}>O₂ Рівень (0+):</label>

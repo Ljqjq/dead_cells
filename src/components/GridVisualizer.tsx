@@ -1,3 +1,4 @@
+// src/components/GridVisualizer.tsx (Повна версія з оновленими пропсами)
 
 import React, { useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -7,8 +8,14 @@ import { CellStateMap } from '../models/types';
 // Конфігурація відображення
 const MUTATION_HIGHLIGHT_COLOR = '#8b5cf6'; // Пурпуровий
 
+// --- НОВИЙ ІНТЕРФЕЙС ПРОПСІВ ДЛЯ ІНТЕРАКТИВНОСТІ ---
+interface GridVisualizerProps {
+    // Ці пропси використовуються лише InteractiveGrid, але GridVisualizer має їх приймати
+    onClick?: (event: React.MouseEvent<HTMLCanvasElement>) => void;
+    cursorStyle?: string; 
+}
 
-const GridVisualizer: React.FC = () => {
+const GridVisualizer: React.FC<GridVisualizerProps> = ({ onClick, cursorStyle = 'default' }) => {
     const { grid, params, currentStep } = useSelector((state: RootState) => state.simulation);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     
@@ -61,19 +68,10 @@ const GridVisualizer: React.FC = () => {
                     // Нормалізуємо рівень до діапазону 0-1
                     const normalizedLevel = Math.min(1, nutrientLevel / MAX_NUTRIENT_LEVEL);
                     
-                   
-                    
-                    // Ми хочемо, щоб MIN була білою (R=255, G=255, B=255)
-                    // і MAX була синьою (R=0, G=0, B=255)
-                    
-                    // Щоб отримати чистий синій при максимумі:
-                    // Інтенсивність синього (B) - завжди 255.
-                    // Інтенсивність червоного (R) та зеленого (G) - зменшується до 0.
+                    // Логіка переходу від білого (MIN) до синього (MAX)
                     const intensity = Math.round(255 * (1 - normalizedLevel));
                     
                     fillColor = `rgb(${intensity}, ${intensity}, 255)`; 
-                    // При MAX_NUTRIENT (рівень 1): intensity = 0. Колір: rgb(0, 0, 255) -> Чистий синій.
-                    // При MIN_NUTRIENT (рівень 0): intensity = 255. Колір: rgb(255, 255, 255) -> Чистий білий.
                 }
 
                 // Малювання заповнення
@@ -100,7 +98,11 @@ const GridVisualizer: React.FC = () => {
                     border: '1px solid #ccc',
                 }}
             >
-                <canvas ref={canvasRef} /> 
+                <canvas 
+                    ref={canvasRef} 
+                    onClick={onClick}          // <-- ПРИЙМАЄМО ОБРОБНИК КЛІКІВ
+                    style={{ cursor: cursorStyle }} // <-- ЗАСТОСОВУЄМО КУРСОР
+                /> 
             </div>
             
             <p style={{ marginTop: '10px', fontSize: '12px', color: '#6b7280' }}>

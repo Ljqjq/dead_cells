@@ -5,12 +5,10 @@ import { startInitialization, runSimulationStep } from '../services/simulationSe
 import { toggleRunning, setParams } from '../store/simulationSlice';
 import type { SimulationParams, GridCell } from '../models/types'; 
 
-// --- 1. ІМПОРТУЄМО НОВИЙ ІНТЕРАКТИВНИЙ КОМПОНЕНТ ---
 import InteractivePlayground from './InteractivePlayground'; 
 
 
-// --- 2. ДОПОМІЖНА ФУНКЦІЯ ---
-// Визначення координат кліку на сітці
+// --- ДОПОМІЖНА ФУНКЦІЯ ---
 const getGridCoordsFromClick = (event: React.MouseEvent<HTMLDivElement, MouseEvent>, cellWidth: number, cellHeight: number): { x: number, y: number } => {
     const rect = event.currentTarget.getBoundingClientRect();
     const x = Math.floor((event.clientX - rect.left) / cellWidth);
@@ -21,20 +19,19 @@ const getGridCoordsFromClick = (event: React.MouseEvent<HTMLDivElement, MouseEve
 
 const SimulationPanel: React.FC = () => {
     const dispatch = useDispatch<AppDispatch>();
-    // Додаємо grid до useSelector
     const { isRunning, currentStep, params, rootColonies, analysisHistory, grid } = useSelector((state: RootState) => state.simulation);
     
-    // --- 3. НОВІ СТАНИ ДЛЯ ВІЗУАЛІЗАЦІЇ ТА ІНТЕРАКТИВНОСТІ ---
+    // --- СТАНИ ДЛЯ ВІЗУАЛІЗАЦІЇ ТА ІНТЕРАКТИВНОСТІ ---
     const [isPlaygroundOpen, setIsPlaygroundOpen] = useState(false);
     const [lastClickCoords, setLastClickCoords] = useState<{ x: number, y: number } | null>(null);
-    const CELL_SIZE = params.cellSizePx || 10; // Розмір клітинки з параметрів
+    const CELL_SIZE = params.cellSizePx || 10; 
     
     // --- СТАРІ СТАНИ ТА РЕФИ ---
     const [displaySpeed, setDisplaySpeed] = useState(1000 / params.simulationSpeedMs); 
     const intervalRef = useRef<number | null>(null);
     const latestAnalysis = analysisHistory[analysisHistory.length - 1];
 
-    // --- СТАРІ EFFECT (Цикл симуляції) ---
+    // --- EFFECT (Цикл симуляції) ---
     useEffect(() => {
         if (isRunning) {
             const runStep = () => {
@@ -59,7 +56,7 @@ const SimulationPanel: React.FC = () => {
     }, [isRunning, dispatch, params.simulationSpeedMs]);
 
 
-    // --- СТАРІ ОБРОБНИКИ КЕРУВАННЯ ---
+    // --- ОБРОБНИКИ КЕРУВАННЯ ---
     const handleInit = () => {
         dispatch(startInitialization());
     };
@@ -92,42 +89,46 @@ const SimulationPanel: React.FC = () => {
     const isDisabled = !isInitialized && !isRunning; 
     
     
-    // --- 4. НОВИЙ Обробник Кліку для Сітки ---
+    // --- Обробник Кліку для Сітки ---
     const handleGridClick = useCallback((event: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-        // Клік обробляється лише якщо Playground відкритий і симуляція на паузі
         if (!isInitialized || !isPlaygroundOpen || isRunning) return; 
 
         const { x, y } = getGridCoordsFromClick(event, CELL_SIZE, CELL_SIZE);
-        
-        // Передаємо нові координати до InteractivePlayground
         setLastClickCoords({ x, y });
 
     }, [isPlaygroundOpen, isRunning, CELL_SIZE, isInitialized]); 
 
     
-    // --- 5. НОВА Функція Рендерингу Сітки ---
+    // --- Функція Рендерингу Сітки (ОНОВЛЕНО: ДОДАНО СКРОЛІНГ) ---
     const renderGrid = () => {
-        if (!isInitialized || !grid || grid.length === 0) {
-             return <div style={{ minWidth: '500px', height: '500px', border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                Сітка не ініціалізована. Натисніть "Ініціалізувати Симуляцію".
-            </div>;
-        }
+    if (!isInitialized || !grid || grid.length === 0) {
+         return <div style={{ minWidth: '500px', height: '500px', border: '1px dashed #ccc', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            Сітка не ініціалізована. Натисніть "Ініціалізувати Симуляцію".
+        </div>;
+    }
 
-        const canvasWidth = params.gridWidth * CELL_SIZE;
-        const canvasHeight = params.gridHeight * CELL_SIZE;
-        
-        const cursorStyle = (isPlaygroundOpen && !isRunning) ? 'crosshair' : 'default';
+    const canvasWidth = params.gridWidth * CELL_SIZE;
+    const canvasHeight = params.gridHeight * CELL_SIZE;
+    
+    // Логіка курсора: показуємо 'crosshair' тільки коли інтерактивність дозволена
+    const isInteractive = isPlaygroundOpen && !isRunning && isInitialized; 
+    const cursorStyle = isInteractive ? 'crosshair' : 'default';
 
-        return (
+    return (
+        // Контейнер для скролінгу (виправляє обрізання сітки на вузьких екранах)
+        <div style={{ 
+            overflow: 'auto', 
+            flexShrink: 1, 
+        }}> 
             <div 
                 style={{ 
+                    // Внутрішній елемент має фіксовані розміри сітки
                     width: canvasWidth, 
                     height: canvasHeight, 
                     display: 'grid', 
                     gridTemplateColumns: `repeat(${params.gridWidth}, ${CELL_SIZE}px)`,
                     border: '1px solid #ccc',
-                    cursor: cursorStyle,
-                    flexShrink: 0,
+                    cursor: cursorStyle, // Застосування стилю курсора
                 }}
                 onClick={handleGridClick}
             >
@@ -140,8 +141,7 @@ const SimulationPanel: React.FC = () => {
                                 height: CELL_SIZE,
                                 backgroundColor: gridCell.cell 
                                     ? gridCell.cell.color
-                                    // Візуалізація O2
-                                    : `rgba(0, 100, 0, ${Math.min(1, gridCell.nutrient.oxygen.level / 100)})`, 
+                                    : `rgba(0, 100, 0, ${Math.min(1, gridCell.nutrient.oxygen.level / 100)})`, // Відображення O₂
                                 border: '1px dotted #eee',
                                 boxSizing: 'border-box'
                             }}
@@ -150,22 +150,23 @@ const SimulationPanel: React.FC = () => {
                     );
                 })}
             </div>
-        );
-    };
+        </div>
+    );
+};
 
 
     return (
         <div style={{ padding: '16px', display: 'flex', gap: '30px', minHeight: '80vh' }}>
             
-            {/* 1. ЛІВА ПАНЕЛЬ: ВАШІ СТАРІ КЕРУВАННЯ ТА НАЛАШТУВАННЯ */}
+            {/* 1. ЛІВА ПАНЕЛЬ: КЕРУВАННЯ ТА НАЛАШТУВАННЯ */}
             <div style={{ 
-                width: '350px', // <<< ЗБІЛЬШЕНА ШИРИНА 
+                width: '350px', 
                 flexShrink: 0, 
                 backgroundColor: '#f9fafb', 
                 borderRadius: '8px', 
                 padding: '16px',
-                overflowY: 'auto', // <<< ДОДАНО СКРОЛІНГ
-                maxHeight: '80vh' // Обмежуємо висоту для скролінгу
+                overflowY: 'auto', 
+                maxHeight: '80vh' 
             }}>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 'bold' }}>Керування Симуляцією</h2>
                 
@@ -298,13 +299,13 @@ const SimulationPanel: React.FC = () => {
                 {/* Кнопка Тоггл для Інтерактивного Майданчика */}
                 <button 
                     onClick={() => setIsPlaygroundOpen(!isPlaygroundOpen)}
-                    disabled={isRunning || !isInitialized}
+                    disabled={!isPlaygroundOpen && (isRunning || !isInitialized)} 
                     style={{ 
                         padding: '10px 20px', 
                         backgroundColor: isPlaygroundOpen ? '#f59e0b' : '#3b82f6', 
                         color: 'white', 
                         border: 'none',
-                        cursor: (isRunning || !isInitialized) ? 'not-allowed' : 'pointer'
+                        cursor: (!isPlaygroundOpen && (isRunning || !isInitialized)) ? 'not-allowed' : 'pointer'
                     }}
                 >
                     {isPlaygroundOpen ? 'Сховати Інтерактивний Майданчик ✖' : 'Відкрити Інтерактивний Майданчик 🎮'}
@@ -316,13 +317,13 @@ const SimulationPanel: React.FC = () => {
                     {renderGrid()}
 
                     {/* Інтерактивний Майданчик (Тільки якщо відкрито) */}
-                    {isPlaygroundOpen ? (
+                    {isPlaygroundOpen && (
                         <InteractivePlayground 
                             onClickCoords={lastClickCoords}
                             gridWidth={params.gridWidth}
                             gridHeight={params.gridHeight}
                         />
-                    ): console.log(isPlaygroundOpen)}
+                    )}
                 </div>
             </div>
         </div>
