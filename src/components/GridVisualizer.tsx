@@ -1,4 +1,3 @@
-// src/components/GridVisualizer.tsx (Повна версія з оновленими пропсами)
 
 import React, { useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
@@ -112,4 +111,4 @@ const GridVisualizer: React.FC<GridVisualizerProps> = ({ onClick, cursorStyle = 
     );
 };
 
-export default GridVisualizer;
+export default GridVisualizer; 

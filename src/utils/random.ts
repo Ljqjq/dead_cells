@@ -1,4 +1,4 @@
-// src/utils/random.ts
+
 import { v4 as uuidv4 } from 'uuid';
 
 // Генерація унікального ID

@@ -1,7 +1,7 @@
-// src/App.tsx (ОНОВЛЕНО)
+
 import React, { useState } from 'react';
-import SimulationControls from './components/SimulationControls'; // НОВИЙ ІМПОРТ
-import InteractiveGrid from './components/InteractiveGrid';       // НОВИЙ ІМПОРТ
+import SimulationControls from './components/SimulationControls'; 
+import InteractiveGrid from './components/InteractiveGrid';       
 import GridVisualizer from './components/GridVisualizer'; 
 import AnalysisChart from './components/AnalysisChart'; 
 
@@ -27,7 +27,7 @@ const App: React.FC = () => {
             <div className="content-area" style={{ display: 'flex', gap: '30px' }}>
                 
                 {/* 1. ЛІВА ПАНЕЛЬ: КЕРУВАННЯ (ЗАВЖДИ ВИДИМА) */}
-                <div className="controls-container">
+                <div className="controls-container" style= {{overflowY: 'auto', height: '100%',}}>
                     <SimulationControls />
                     <div className="chart-section" style={{ padding: '16px', backgroundColor: '#f9fafb', borderRadius: '8px', marginTop: '20px' }}>
                         <h2 className="chart-title" style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Аналіз Популяції</h2>

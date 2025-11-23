@@ -1,4 +1,3 @@
-// src/components/InteractiveGrid.tsx (ОНОВЛЕНО)
 
 import React, { useCallback, useState } from 'react';
 import { useSelector } from 'react-redux';
@@ -16,11 +15,28 @@ const InteractiveGrid: React.FC = () => {
     
     // --- Обробник Кліку для Canvas ---
     const handleGridClick = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-        // Кліки працюють, тільки якщо Playground відкритий, і симуляція на паузі
-        if (!isInitialized || !isPlaygroundOpen || isRunning) return; 
+        
+        // --- ПЕРЕВІРКА УМОВ ТА СПОВІЩЕННЯ (alert) ---
+        if (!isPlaygroundOpen) {
+            // Користувач клікнув, коли панель інструментів закрита
+            alert("❌ Щоб взаємодіяти з сіткою, спочатку відкрийте 'Інтерактивний Майданчик'.");
+            return;
+        }
+        
+        if (!isInitialized) {
+            // Симуляція не ініціалізована
+            alert("❌ Для редагування сітки необхідно ініціалізувати симуляцію.");
+            return;
+        }
+        
+        if (isRunning) {
+            // Симуляція працює
+            alert("❌ Редагування сітки неможливе, коли симуляція працює. Натисніть 'Пауза' на лівій панелі.");
+            return;
+        }
+        // ------------------------------------------------------------------
 
-        // ВИКОРИСТОВУЄМО offsetX/offsetY: Координати відносно елемента Canvas, 
-        // що усуває проблеми зі зсувом.
+        // Якщо всі перевірки пройдені, обчислюємо координати:
         const clickX = event.nativeEvent.offsetX;
         const clickY = event.nativeEvent.offsetY;
         
@@ -28,7 +44,7 @@ const InteractiveGrid: React.FC = () => {
         const y = Math.floor(clickY / CELL_SIZE);
         setLastClickCoords({ x, y });
 
-    }, [isPlaygroundOpen, isRunning, CELL_SIZE, isInitialized]); 
+    }, [isPlaygroundOpen, isRunning, CELL_SIZE, isInitialized]);
 
     
     const isInteractive = isPlaygroundOpen && !isRunning && isInitialized; 
@@ -40,7 +56,6 @@ const InteractiveGrid: React.FC = () => {
             {/* Кнопка Тоггл для Інтерактивного Майданчика */}
             <button 
                 onClick={() => setIsPlaygroundOpen(!isPlaygroundOpen)}
-                disabled={!isPlaygroundOpen && (isRunning || !isInitialized)} 
                 style={{ 
                     padding: '10px 20px', 
                     backgroundColor: isPlaygroundOpen ? '#f59e0b' : '#3b82f6', 

@@ -1,8 +1,8 @@
-// src/components/SimulationControls.tsx
+
 import React, { useRef, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store/store';
-import { startInitialization, runSimulationStep } from '../services/simulationService'; // runSimulationStep тепер потрібен
+import { startInitialization, runSimulationStep } from '../services/simulationService';
 import { toggleRunning, setParams } from '../store/simulationSlice';
 import type { SimulationParams } from '../models/types'; 
 
