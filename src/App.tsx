@@ -11,7 +11,7 @@ type DisplayMode = 'VISUALIZER' | 'PLAYGROUND';
 const App: React.FC = () => {
     // Починаємо з "красивого" режиму (GridVisualizer)
     const [displayMode, setDisplayMode] = useState<DisplayMode>('VISUALIZER'); 
-    
+     
     const GridAreaComponent = displayMode === 'VISUALIZER' ? GridVisualizer : InteractiveGrid;
     
     const toggleMode = () => {

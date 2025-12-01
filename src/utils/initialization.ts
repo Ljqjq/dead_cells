@@ -1,7 +1,8 @@
 // src/utils/initialization.ts
 
 import { getRandomInt, generateId } from './random'; 
-import { CellStateMap, Cell } from '../models/types'; 
+import { CellStateMap} from '../models/types';
+import { Cell } from "../models/Cell" 
 import type { 
     SimulationParams, 
     GridCell, 
